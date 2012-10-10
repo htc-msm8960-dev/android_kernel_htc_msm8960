@@ -2704,7 +2704,7 @@ out_dput:
  */
 static int do_last(struct nameidata *nd, struct path *path,
 		   struct file *file, const struct open_flags *op,
-		   int *opened, const char *pathname)
+		   int *opened, struct filename *name)
 {
 	struct dentry *dir = nd->path.dentry;
 	int open_flag = op->open_flag;
@@ -2716,6 +2716,7 @@ static int do_last(struct nameidata *nd, struct path *path,
 	struct path save_parent = { .dentry = NULL, .mnt = NULL };
 	bool retried = false;
 	int error;
+	const char *pathname = name->name;
 
 	nd->flags &= ~LOOKUP_PARENT;
 	nd->flags |= op->intent;
@@ -2950,70 +2951,7 @@ stale_open:
 	goto retry_lookup;
 }
 
-static int do_tmpfile(int dfd, const char *pathname,
-		struct nameidata *nd, int flags,
-		const struct open_flags *op,
-		struct file *file)
-{
-	static const struct qstr name = { .name = "/", .len = 1 };
-	struct dentry *dentry, *child;
-	struct inode *dir;
-	int error = path_lookupat(dfd, pathname,
-				  flags | LOOKUP_DIRECTORY, nd);
-	if (unlikely(error))
-		return error;
-	error = mnt_want_write(nd->path.mnt);
-	if (unlikely(error))
-		goto out;
-	/* we want directory to be writable */
-	error = inode_permission(nd->inode, MAY_WRITE | MAY_EXEC);
-	if (error)
-		goto out2;
-	dentry = nd->path.dentry;
-	dir = dentry->d_inode;
-	if (!dir->i_op->tmpfile) {
-		error = -EOPNOTSUPP;
-		goto out2;
-	}
-	child = d_alloc(dentry, &name);
-	if (unlikely(!child)) {
-		error = -ENOMEM;
-		goto out2;
-	}
-	nd->flags &= ~LOOKUP_DIRECTORY;
-	nd->flags |= op->intent;
-	dput(nd->path.dentry);
-	nd->path.dentry = child;
-	error = dir->i_op->tmpfile(dir, nd->path.dentry, op->mode);
-	if (error)
-		goto out2;
-	audit_inode(pathname, nd->path.dentry);
-	/* Don't check for other permissions, the inode was just created */
-	error = may_open(&nd->path, MAY_OPEN, op->open_flag);
-	if (error)
-		goto out2;
-	file = lookup_instantiate_filp(nd, dentry, generic_file_open);
-	if (IS_ERR(file)) {
-		error = PTR_ERR(file);
-		goto out2;
-	}
-	error = open_check_o_direct(file);
-	if (error) {
-		fput(file);
-	} else if (!(op->open_flag & O_EXCL)) {
-		struct inode *inode = file->f_path.dentry->d_inode;
-		spin_lock(&inode->i_lock);
-		inode->i_state |= I_LINKABLE;
-		spin_unlock(&inode->i_lock);
-	}
-out2:
-	mnt_drop_write(nd->path.mnt);
-out:
-	path_put(&nd->path);
-	return error;
-}
-
-static struct file *path_openat(int dfd, const char *pathname,
+static struct file *path_openat(int dfd, struct filename *pathname,
 		struct nameidata *nd, const struct open_flags *op, int flags)
 {
 	struct file *base = NULL;
@@ -3028,17 +2966,21 @@ static struct file *path_openat(int dfd, const char *pathname,
 
 	file->f_flags = op->open_flag;
 
+<<<<<<< HEAD
 	if (unlikely(file->f_flags & __O_TMPFILE)) {
 		error = do_tmpfile(dfd, pathname, nd, flags, op, file, &opened);
 		goto out2;
 	}
 
 	error = path_init(dfd, pathname, flags | LOOKUP_PARENT, nd, &base);
+=======
+	error = path_init(dfd, pathname->name, flags | LOOKUP_PARENT, nd, &base);
+>>>>>>> bd17448... vfs: make path_openat take a struct filename pointer
 	if (unlikely(error))
 		goto out;
 
 	current->total_link_count = 0;
-	error = link_path_walk(pathname, nd);
+	error = link_path_walk(pathname->name, nd);
 	if (unlikely(error))
 		goto out;
 
@@ -3084,7 +3026,7 @@ out:
 	return file;
 }
 
-struct file *do_filp_open(int dfd, const char *pathname,
+struct file *do_filp_open(int dfd, struct filename *pathname,
 		const struct open_flags *op, int flags)
 {
 	struct nameidata nd;
@@ -3103,6 +3045,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 {
 	struct nameidata nd;
 	struct file *file;
+	struct filename filename = { .name = name };
 
 	nd.root.mnt = mnt;
 	nd.root.dentry = dentry;
@@ -3112,11 +3055,11 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 	if (dentry->d_inode->i_op->follow_link && op->intent & LOOKUP_OPEN)
 		return ERR_PTR(-ELOOP);
 
-	file = path_openat(-1, name, &nd, op, flags | LOOKUP_RCU);
+	file = path_openat(-1, &filename, &nd, op, flags | LOOKUP_RCU);
 	if (unlikely(file == ERR_PTR(-ECHILD)))
-		file = path_openat(-1, name, &nd, op, flags);
+		file = path_openat(-1, &filename, &nd, op, flags);
 	if (unlikely(file == ERR_PTR(-ESTALE)))
-		file = path_openat(-1, name, &nd, op, flags | LOOKUP_REVAL);
+		file = path_openat(-1, &filename, &nd, op, flags | LOOKUP_REVAL);
 	return file;
 }
 
