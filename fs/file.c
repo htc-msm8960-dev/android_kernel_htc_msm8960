@@ -477,6 +477,7 @@ out:
 	spin_unlock(&files->file_lock);
 	return error;
 }
+EXPORT_SYMBOL(alloc_fd);
 
 int alloc_fd(unsigned start, unsigned flags)
 {
