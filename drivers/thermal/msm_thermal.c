@@ -171,7 +171,6 @@ static void __cpuinit check_temp(struct work_struct *work)
 	if (temp >= msm_thermal_info.limit_temp_degC) {
 		if (limit_idx == limit_idx_low)
 			goto reschedule;
-
 		limit_idx -= msm_thermal_info.freq_step;
 		if (limit_idx < limit_idx_low)
 			limit_idx = limit_idx_low;
