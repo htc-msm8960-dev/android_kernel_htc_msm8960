@@ -459,9 +459,11 @@ static enum alarmtimer_restart alarm_handle_timer(struct alarm *alarm,
 	unsigned long flags;
 	struct k_itimer *ptr = container_of(alarm, struct k_itimer,
 						it.alarm.alarmtimer);
+
 	enum alarmtimer_restart result = ALARMTIMER_NORESTART;
 
 	spin_lock_irqsave(&ptr->it_lock, flags);
+
 	if ((ptr->it_sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE) {
 		if (posix_timer_event(ptr, 0) != 0)
 			ptr->it_overrun++;
