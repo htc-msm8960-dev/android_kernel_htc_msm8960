@@ -2542,7 +2542,7 @@ static struct file *path_openat(int dfd, const char *pathname,
 
 	if (unlikely(file->f_flags & __O_TMPFILE)) {
 		error = do_tmpfile(dfd, pathname, nd, flags, op, file, &opened);
-		goto out;
+		goto out2;
 	}
 
 	error = path_init(dfd, pathname, flags | LOOKUP_PARENT, nd, &base);
@@ -2578,12 +2578,21 @@ out:
 		path_put(&nd->root);
 	if (base)
 		fput(base);
-	release_open_intent(nd);
-	return filp;
-
-out_filp:
-	filp = ERR_PTR(error);
-	goto out;
+out2:
+	if (!(opened & FILE_OPENED)) {
+		BUG_ON(!error);
+		put_filp(file);
+	}
+	if (unlikely(error)) {
+		if (error == -EOPENSTALE) {
+			if (flags & LOOKUP_RCU)
+				error = -ECHILD;
+			else
+				error = -ESTALE;
+		}
+		file = ERR_PTR(error);
+	}
+	return file;
 }
 
 struct file *do_filp_open(int dfd, const char *pathname,
