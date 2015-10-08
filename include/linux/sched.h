@@ -748,7 +748,7 @@ struct user_struct {
 	uid_t uid;
 	struct user_namespace *user_ns;
 
-#ifdef CONFIG_PERF_EVENTS
+#if defined(CONFIG_PERF_EVENTS) || defined(CONFIG_BPF_SYSCALL)
 	atomic_long_t locked_vm;
 #endif
 };
