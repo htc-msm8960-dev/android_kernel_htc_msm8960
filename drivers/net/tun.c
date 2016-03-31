@@ -1442,7 +1442,8 @@ static long __tun_chr_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user(&fprog, argp, sizeof(fprog)))
 			break;
 
-		ret = sk_attach_filter(&fprog, tun->socket.sk);
+		ret = __sk_attach_filter(&fprog, tun->socket.sk,
+				lockdep_rtnl_is_held());
 		break;
 
 	case TUNDETACHFILTER:
@@ -1450,7 +1451,7 @@ static long __tun_chr_ioctl(struct file *file, unsigned int cmd,
 		ret = -EINVAL;
 		if ((tun->flags & TUN_TYPE_MASK) != TUN_TAP_DEV)
 			break;
-		ret = sk_detach_filter(tun->socket.sk);
+		ret = __sk_detach_filter(tun->socket.sk, lockdep_rtnl_is_held());
 		break;
 
 	default:
