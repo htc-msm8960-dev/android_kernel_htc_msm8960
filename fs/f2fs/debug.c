@@ -17,6 +17,7 @@
 #include <linux/blkdev.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/module.h>
 
 #include "f2fs.h"
 #include "node.h"
@@ -364,6 +365,7 @@ static int stat_open(struct inode *inode, struct file *file)
 }
 
 static const struct file_operations stat_fops = {
+	.owner = THIS_MODULE,
 	.open = stat_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
