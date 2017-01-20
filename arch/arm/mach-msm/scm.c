@@ -34,6 +34,11 @@ static DEFINE_MUTEX(scm_lock);
 #define SCM_BUF_LEN(__cmd_size, __resp_size)	\
 	(sizeof(struct scm_command) + sizeof(struct scm_response) + \
 		__cmd_size + __resp_size)
+		
+		#undef PINFO
+/** #define PINFO(fmt, ...) printk(KERN_INFO TAG "[I] %s(%i, %s): " fmt "\n", \
+		__func__, current->pid, current->comm, ##__VA_ARGS__)
+*/
 /**
  * struct scm_command - one SCM command buffer
  * @len: total available memory for command and response
@@ -76,6 +81,13 @@ struct scm_response {
 	u32	len;
 	u32	buf_offset;
 	u32	is_complete;
+};
+
+struct oem_access_item_req {
+	u32	is_write;
+	u32	id;
+	u32	buf_len;
+	void *buf;
 };
 
 /**
@@ -172,7 +184,7 @@ static int __scm_call(const struct scm_command *cmd)
 
 static u32 cacheline_size;
 
-static void scm_inv_range(unsigned long start, unsigned long end)
+void scm_inv_range(unsigned long start, unsigned long end)
 {
 	start = round_down(start, cacheline_size);
 	end = round_up(end, cacheline_size);
@@ -184,6 +196,7 @@ static void scm_inv_range(unsigned long start, unsigned long end)
 	dsb();
 	isb();
 }
+EXPORT_SYMBOL(scm_inv_range);
 
 /**
  * scm_call_common() - Send an SCM command
@@ -530,3 +543,20 @@ static int scm_init(void)
 	return 0;
 }
 early_initcall(scm_init);
+
+int secure_access_item(unsigned int is_write, unsigned int id, unsigned int buf_len, unsigned char *buf)
+{
+	int ret;
+	struct oem_access_item_req req;
+
+	req.is_write = is_write;
+	req.id = id;
+	req.buf_len = buf_len;
+	req.buf = (void *)virt_to_phys(buf);
+
+	ret = scm_call(SCM_SVC_OEM, TZ_HTC_SVC_ACCESS_ITEM,
+			&req, sizeof(req), NULL, 0);
+
+	//PINFO("TZ_HTC_SVC_ACCESS_ITEM id %d ret = %d", id, ret);
+	return ret;
+}
