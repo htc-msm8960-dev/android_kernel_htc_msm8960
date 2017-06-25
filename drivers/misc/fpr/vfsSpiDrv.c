@@ -117,6 +117,7 @@ int gpio_irq;
 static DECLARE_WAIT_QUEUE_HEAD(wq);
 static LIST_HEAD(deviceList);
 static DEFINE_MUTEX(deviceListMutex);
+char firmware_syn[30];
 static int dataToRead;
 static int suspend = 0;
 static int hasfp = 0;
@@ -186,7 +187,66 @@ static ssize_t fpr_write(struct device *dev,
 
     return count;
 }
+
+static ssize_t vendor_show(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	int pos_ind= 0;
+	printk("[fp]vfsspi: Show finegrprint vendor 0105\n");
+
+	switch(fp_mount)
+	{
+		case 0: 
+			printk("[fp]vfsspi: Fingerprint sensor non exist\n");
+			pos_ind += snprintf(firmware_syn+pos_ind, sizeof(firmware_syn), "0");
+			break;
+		case 1: 
+			printk("[fp]vfsspi: Fingerprint sensor is Validity\n");
+			pos_ind += snprintf(firmware_syn+pos_ind, sizeof(firmware_syn), "1");
+			break;
+		case 2: 
+			printk("[fp]vfsspi: Fingerprint sensor is Synaptics\n");
+			pos_ind += snprintf(firmware_syn+pos_ind, sizeof(firmware_syn), "2");
+			break;
+		case 3: 
+			printk("[fp]vfsspi: Fingerprint sensor is Fingerprint Card\n");
+			pos_ind += snprintf(firmware_syn+pos_ind, sizeof(firmware_syn), "3");
+			break;
+	}
+
+	pos_ind = snprintf(buf, pos_ind + 2, "%s", firmware_syn);
+
+	return pos_ind;
+}
+
 static DEVICE_ATTR(fpr, 0644, fpr_read, fpr_write);
+static DEVICE_ATTR(fp_mount, 0644, vendor_show, NULL);
+
+static struct kobject *android_fingerprint_kobj;
+
+static int fingerprint_sysfs_init(void)
+{
+        int ret = 0;
+        android_fingerprint_kobj = kobject_create_and_add("android_fingerprint", NULL);
+        if (android_fingerprint_kobj == NULL) {
+                printk("[fp]vfsspi %s:subsystem_register_failed", __func__);
+                ret = -ENOMEM;
+                return ret;
+        }
+
+        ret = sysfs_create_file(android_fingerprint_kobj, &dev_attr_fpr.attr);
+        if (ret) {
+                printk("[fp]vfsspi %s: sysfs_create_file read_att failed(firmware)\n", __func__);
+                return ret;
+        }
+        ret = sysfs_create_file(android_fingerprint_kobj, &dev_attr_fp_mount.attr);
+        if (ret) {
+                printk("[fp]vfsspi %s: sysfs_create_file read_att failed(firmware)\n", __func__);
+                return ret;
+        }
+        printk("[fp]vfsspi attribute file register Done");
+        return 0;
+}
 
 inline void shortToLittleEndian(char *buf, size_t len)
 {
@@ -1097,6 +1157,7 @@ int vfsspi_probe(struct spi_device *spi)
 
 
     fingerprint_pdata = spi->controller_data;
+    fingerprint_sysfs_init(); 
 
   if (hasfp == 0 || DISABLE_FP) {
 		status = fingerprint_pdata->set_power_control(0);
@@ -1118,7 +1179,6 @@ int vfsspi_probe(struct spi_device *spi)
         }
         return status;
     }
-    device_create_file(&(spi->dev), &dev_attr_fpr);
 	vfsSpiDev = kzalloc(sizeof(*vfsSpiDev), GFP_KERNEL);
 	if (vfsSpiDev == NULL)
 		return -ENOMEM;
