@@ -35,7 +35,11 @@
 #include <linux/tfa9887.h>
 #include <linux/rt5501.h>
 #include <sound/q6asm.h>
+#if defined(CONFIG_MACH_T6_UL)
 #include "board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "board-t6dwg.h"
+#endif
 
 /* 8064 machine driver */
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS

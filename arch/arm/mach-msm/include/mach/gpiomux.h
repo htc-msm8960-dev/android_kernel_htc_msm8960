@@ -128,6 +128,8 @@ int __must_check msm_gpiomux_get(unsigned gpio);
 /* Decrement a gpio's reference count, possibly suspending the line. */
 int msm_gpiomux_put(unsigned gpio);
 
+int msm_gpiomux_read(unsigned gpio);
+
 /* Install a new setting in a gpio.  To erase a slot, use NULL.
  * The old setting that was overwritten can be passed back to the caller
  * old_setting can be NULL if the caller is not interested in the previous
@@ -148,6 +150,7 @@ int msm_gpiomux_write(unsigned gpio, enum msm_gpiomux_setting which,
  * should use msm_gpiomux_write.
  */
 void __msm_gpiomux_write(unsigned gpio, struct gpiomux_setting val);
+unsigned __msm_gpiomux_read(unsigned gpio);
 #else
 static inline int msm_gpiomux_init(size_t ngpio)
 {

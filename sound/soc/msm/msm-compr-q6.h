@@ -33,4 +33,10 @@ struct compr_audio {
 	uint32_t codec;
 };
 
+struct msm_compr_q6_ops {
+	int (*get_24b_audio) (void);
+};
+
+void htc_register_compr_q6_ops(struct msm_compr_q6_ops *ops);
+
 #endif /*_MSM_COMPR_H*/

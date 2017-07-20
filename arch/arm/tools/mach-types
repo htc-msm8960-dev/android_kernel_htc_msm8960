@@ -1205,3 +1205,11 @@ msm8930_evt		MACH_MSM8930_EVT	MSM8930_EVT		4558
 m4_ul			MACH_M4_UL		M4_UL			4490
 zara			MACH_ZARA		ZARA			4605
 t6_ul			MACH_T6_UL		T6_UL			4642
+t6_tl			MACH_T6_TL			T6_TL			4578
+t6_dug		MACH_T6_DUG			T6_DUG			4579
+t6_dwg		MACH_T6_DWG			T6_DWG			4580
+t6_u                    MACH_T6_U               T6_U                    4643
+t6_ula                  MACH_T6_ULA             T6_ULA                  4644
+t6_wl                   MACH_T6_WL              T6_WL                   4645
+t6_whl                  MACH_T6_WHL             T6_WHL                  4646
+t6_uhl                  MACH_T6_UHL             T6_UHL                  4788

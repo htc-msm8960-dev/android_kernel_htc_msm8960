@@ -151,12 +151,30 @@ void msm_set_restart_mode(int mode)
 EXPORT_SYMBOL(msm_set_restart_mode);
 
 #ifdef CONFIG_MACH_HTC
+//static unsigned mdm2ap_errfatal_restart;
 static unsigned ap2mdm_pmic_reset_n_gpio = -1;
+static unsigned ap2qsc_pmic_pwr_en_value;
+static unsigned ap2qsc_pmic_pwr_en_gpio = -1;
+static unsigned ap2qsc_pmic_soft_reset_gpio = -1;
+#ifdef CONFIG_QSC_MODEM
+void set_qsc_drv_is_ready(int is_ready);
+#endif
 void register_ap2mdm_pmic_reset_n_gpio(unsigned gpio)
 {
 	ap2mdm_pmic_reset_n_gpio = gpio;
 }
 EXPORT_SYMBOL(register_ap2mdm_pmic_reset_n_gpio);
+
+void register_ap2qsc_pmic_pwr_en_gpio(unsigned gpio, unsigned enable_value)
+{
+	ap2qsc_pmic_pwr_en_gpio = gpio;
+	ap2qsc_pmic_pwr_en_value = enable_value;
+}
+
+void register_ap2qsc_pmic_soft_reset_gpio(unsigned gpio)
+{
+	ap2qsc_pmic_soft_reset_gpio = gpio;
+}
 
 static void mdm_power_off(void)
 {
@@ -170,6 +188,31 @@ static void mdm_power_off(void)
 			mdelay(1000);
 		}
 		pr_info("%s: Powered off MDM", __func__);
+	}
+}
+
+static void turn_off_qsc_power(void)
+{
+	if (gpio_is_valid(ap2qsc_pmic_pwr_en_gpio))
+	{
+		if (gpio_is_valid(ap2qsc_pmic_soft_reset_gpio))
+		{
+			pr_info("Discharging QSC...\n");
+#ifdef CONFIG_QSC_MODEM
+			/* SSD_RIL: To avoid qsc driver get status change or err fatal
+			   interrupt and then trigger SSR in long press power key case*/
+			set_qsc_drv_is_ready(0);
+#endif
+			gpio_direction_output(ap2qsc_pmic_soft_reset_gpio, 1);
+
+			mdelay(500);
+		}
+
+		printk(KERN_CRIT "Powering off QSC...\n");
+		gpio_direction_output(ap2qsc_pmic_pwr_en_gpio, !ap2qsc_pmic_pwr_en_value);
+		pet_watchdog();
+		mdelay(1000);
+		pet_watchdog();
 	}
 }
 
@@ -333,6 +376,7 @@ static void msm_power_off(void)
 {
 	/* MSM initiated power off, lower ps_hold */
 	__msm_power_off(1);
+	turn_off_qsc_power();
 }
 
 static void cpu_power_off(void *data)

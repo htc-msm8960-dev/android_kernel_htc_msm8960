@@ -36,6 +36,9 @@
 #include <linux/wakelock.h>
 #include <mach/htc_acoustic_pmic.h>
 #include <linux/jiffies.h>
+#ifdef CONFIG_MACH_HTC
+#include <mach/board_htc.h>
+#endif
 
 #ifdef CONFIG_AMP_RT5501_ON_GPIO
 #define DEBUG (1)

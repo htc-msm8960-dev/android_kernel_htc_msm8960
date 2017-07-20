@@ -27,7 +27,11 @@
 #include <mach/gpiomux.h>
 #include <mach/restart.h>
 #include "devices.h"
+#if defined(CONFIG_MACH_T6_UL)
 #include "board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "board-t6dwg.h"
+#endif
 #include <asm/setup.h>
 #ifdef CONFIG_HTC_BATT_8960
 #include "mach/htc_battery_8960.h"

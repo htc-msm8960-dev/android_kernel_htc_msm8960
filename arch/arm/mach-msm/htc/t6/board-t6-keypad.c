@@ -22,7 +22,11 @@
 #include <mach/gpio.h>
 #include <linux/moduleparam.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
+#if defined(CONFIG_MACH_T6_UL)
 #include "board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "board-t6dwg.h"
+#endif
 
 static char *keycaps = "--qwerty";
 #undef MODULE_PARAM_PREFIX

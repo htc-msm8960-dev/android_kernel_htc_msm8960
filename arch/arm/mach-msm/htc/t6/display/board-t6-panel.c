@@ -25,7 +25,11 @@
 #include <mach/msm_bus_board.h>
 
 #include "devices.h"
+#if defined(CONFIG_MACH_T6_UL)
 #include "../board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "../board-t6dwg.h"
+#endif
 
 #include <linux/i2c.h>
 #include <linux/mfd/pm8xxx/pm8921.h>

@@ -116,7 +116,7 @@
 #endif
 
 #if defined(CONFIG_MACH_HTC) && defined(CONFIG_ARCH_APQ8064)
-#if defined(CONFIG_MACH_T6_UL)
+#if defined(CONFIG_MACH_T6_UL) || defined(CONFIG_MACH_T6_DWG)
 #define MSM_HTC_RAM_CONSOLE_PHYS	0x8D900000
 #else
 #define MSM_HTC_RAM_CONSOLE_PHYS	0x8F100000

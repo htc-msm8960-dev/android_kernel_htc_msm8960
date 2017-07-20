@@ -78,6 +78,7 @@ struct pm8xxx_ccadc_chip {
 	unsigned long		last_calib_time;
 	int			last_calib_temp;
 	int			eoc_irq;
+	int			r_sense;
 	int			r_sense_uohm;
 	struct delayed_work	calib_ccadc_work;
 	struct mutex		calib_mutex;

@@ -922,6 +922,12 @@ config MACH_FSM9XXX_SURF
 config MACH_MSM_DUMMY
 	bool "NONE (No device)"
 
+config QSC_MODEM
+        default n
+        bool "QMC QSC MODEM"
+        help
+          Support for the QMC QSC Modem.
+
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"

@@ -9,15 +9,21 @@ config MACH_T6_UL
 	help
 	  Support for the HTC T6 device.
 
+config MACH_T6_DWG
+    depends on ARCH_APQ8064
+	select MACH_HTC
+    bool "APQ8064 T6_DWG"
+	bool "HTC One"
+    help
+      Support for the HTC APQ8064 T6_DWG.    
+
 config CABC_DIMMING_SWITCH
-	depends on MACH_T6_UL
 	bool "Enable panel CABC dimming switch"
 	default y
 	help
 	  Enable CABC dimming switch.
 
 config SRE_CONTROL
-	depends on MACH_T6_UL
 	bool "Enable panel SRE control"
 	default y
 	help

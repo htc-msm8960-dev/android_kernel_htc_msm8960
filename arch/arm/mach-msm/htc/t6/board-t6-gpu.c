@@ -20,7 +20,11 @@
 #include <mach/socinfo.h>
 
 #include "devices.h"
+#if defined(CONFIG_MACH_T6_UL)
 #include "board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "board-t6dwg.h"
+#endif
 
 #ifdef CONFIG_MSM_DCVS
 static struct msm_dcvs_freq_entry grp3d_freq[] = {

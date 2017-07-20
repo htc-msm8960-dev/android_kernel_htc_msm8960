@@ -43,12 +43,17 @@ struct mdm_modem_drv {
 	unsigned ap2mdm_pmic_pwr_en_gpio;
 	unsigned mdm2ap_pblrdy;
 	unsigned usb_switch_gpio;
-
+	unsigned ap2mdm_ipc1_gpio;
+	unsigned mdm2ap_bootloader_gpio;
+	int mdm_errfatal_irq;
+	int mdm_status_irq;
+	int mdm2ap_bootloader_irq;
 	atomic_t mdm_ready;
 	int mdm_boot_status;
 	int mdm_ram_dump_status;
 	enum charm_boot_type boot_type;
 	int mdm_debug_on;
+	int mdm_hsic_reconnectd;
 	int mdm_unexpected_reset_occurred;
 	int disable_status_check;
 	int power_on_count;
@@ -58,7 +63,6 @@ struct mdm_modem_drv {
 #ifdef CONFIG_MACH_HTC
 	unsigned ap2mdm_pmic_reset_n_gpio;
 	unsigned mdm2ap_hsic_ready_gpio;
-	unsigned ap2mdm_ipc1_gpio;
 #endif
 
 	struct mdm_platform_data *pdata;

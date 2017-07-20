@@ -36,12 +36,31 @@ struct subsys_desc {
 	int (*ramdump)(int, const struct subsys_desc *desc);
 };
 
+struct subsys_data {
+	const char *name;
+	int (*shutdown) (const struct subsys_data *);
+	int (*powerup) (const struct subsys_data *);
+	void (*crash_shutdown) (const struct subsys_data *);
+	int (*ramdump) (int, const struct subsys_data *);
+
+	
+	struct list_head list;
+	void *notif_handle;
+
+	struct mutex shutdown_lock;
+	struct mutex powerup_lock;
+
+	void *restart_order;
+	struct subsys_data *single_restart_list[1];
+	int enable_ssr;
+};
+
 #if defined(CONFIG_MSM_SUBSYSTEM_RESTART)
 
 extern int get_restart_level(void);
 extern int subsystem_restart_dev(struct subsys_device *dev);
 extern int subsystem_restart(const char *name);
-
+int ssr_register_subsystem(struct subsys_data *subsys);
 extern struct subsys_device *subsys_register(struct subsys_desc *desc);
 extern void subsys_unregister(struct subsys_device *dev);
 
@@ -66,6 +85,11 @@ static inline
 struct subsys_device *subsys_register(struct subsys_desc *desc)
 {
 	return NULL;
+}
+
+static inline int ssr_register_subsystem(struct subsys_data *subsys)
+{
+	return 0;
 }
 
 static inline void subsys_unregister(struct subsys_device *dev) { }

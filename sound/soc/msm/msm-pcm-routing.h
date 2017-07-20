@@ -129,6 +129,10 @@ struct msm_pcm_routing_evt {
 	void *priv_data;
 };
 
+struct msm_pcm_routing_ops {
+	int (*get_q6_effect) (void);
+};
+
 void msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
 				       int dspst_id, int stream_type,
 				       struct msm_pcm_routing_evt event_info);
@@ -143,4 +147,5 @@ int multi_ch_pcm_set_volume(unsigned volume);
 
 int compressed_set_volume(unsigned volume);
 
+void htc_register_pcm_routing_ops(struct msm_pcm_routing_ops *ops);
 #endif /*_MSM_PCM_H*/

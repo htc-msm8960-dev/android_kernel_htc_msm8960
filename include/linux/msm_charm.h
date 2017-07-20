@@ -13,6 +13,7 @@
 #define GET_DLOAD_STATUS	_IOR(CHARM_CODE, 8, int)
 #define IMAGE_UPGRADE		_IOW(CHARM_CODE, 9, int)
 #define SHUTDOWN_CHARM		_IOW(CHARM_CODE, 10, int)
+#define FORCE_DLOAD			_IOW(CHARM_CODE, 11, int)
 
 #ifdef CONFIG_MACH_HTC
 #define MODEM_ERRMSG_LEN	256
@@ -36,4 +37,9 @@ enum image_upgrade_type {
 	MDM_CONTROLLED_UPGRADE,
 };
 
+enum mdm_bootloader_irq_state {
+	MDM_BOOTLOAER_GPIO_NOT_INITIALIZED,
+	MDM_BOOTLOAER_GPIO_IRQ_REGISTERED,
+	MDM_BOOTLOAER_GPIO_IRQ_RECEIVED,
+};
 #endif

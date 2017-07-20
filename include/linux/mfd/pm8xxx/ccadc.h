@@ -33,6 +33,7 @@ struct pm8xxx_ccadc_core_data {
 struct pm8xxx_ccadc_platform_data {
 	struct pm8xxx_ccadc_core_data	ccadc_cdata;
 	int				r_sense_uohm;
+	int		r_sense;
 	unsigned int			calib_delay_ms;
 	bool				periodic_wakeup;
 };

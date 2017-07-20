@@ -119,6 +119,8 @@ struct gpio_event_input_info {
 	uint16_t type;
 	const struct gpio_event_direct_entry *keymap;
 	size_t keymap_size;
+	void (*setup_input_gpio)(void);
+	void (*clear_hw_reset)(void);
 };
 
 /* outputs */

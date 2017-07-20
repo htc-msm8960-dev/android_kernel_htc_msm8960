@@ -21,7 +21,11 @@
 #include <mach/gpiomux.h>
 
 #include "devices.h"
+#if defined(CONFIG_MACH_T6_UL)
 #include "board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "board-t6dwg.h"
+#endif
 
 #include <mach/board.h>
 #include <linux/spi/spi.h>

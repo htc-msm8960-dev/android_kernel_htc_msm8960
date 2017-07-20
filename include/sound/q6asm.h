@@ -166,6 +166,12 @@ struct audio_client {
 	bool             perf_mode;
 };
 
+struct q6asm_ops {
+	int (*get_q6_effect) (void);
+};
+
+void htc_register_q6asm_ops(struct q6asm_ops *ops);
+
 void q6asm_audio_client_free(struct audio_client *ac);
 
 struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv);

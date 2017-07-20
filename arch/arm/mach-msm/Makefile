@@ -207,6 +207,7 @@ obj-$(CONFIG_MSM_LPASS_8960) += lpass-8960.o
 obj-$(CONFIG_MSM_WCNSS_SSR_8960) += wcnss-ssr-8960.o
 obj-$(CONFIG_MSM_GSS_SSR_8064) += gss-8064.o
 
+obj-$(CONFIG_IOEXTENDER) += ADP5585_ioextender.o
 ifdef CONFIG_CPU_IDLE
 	obj-$(CONFIG_ARCH_APQ8064) += cpuidle.o
 	obj-$(CONFIG_ARCH_MSM8960) += cpuidle.o
@@ -371,6 +372,7 @@ obj-$(CONFIG_ARCH_MSM7X27A) += board-msm7x27a-regulator.o
 endif
 
 obj-$(CONFIG_ARCH_MSM8960) += mdm2.o mdm_common.o
+obj-$(CONFIG_QSC_MODEM) += qsc_ctrl.o
 obj-$(CONFIG_MSM_RTB) += msm_rtb.o
 obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
 obj-$(CONFIG_MSM_EBI_ERP) += ebi_erp.o

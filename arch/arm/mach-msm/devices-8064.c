@@ -53,7 +53,7 @@
 
 /* Address of GSBI blocks */
 #define MSM_GSBI1_PHYS		0x12440000
-#if defined(CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_T6_UL)
+#if defined(CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_T6_UL) || defined(CONFIG_MACH_T6_DWG)
 #define MSM_GSBI2_PHYS		0x12480000
 #else
 #define MSM_GSBI2_PHYS		0x13440000
@@ -503,7 +503,7 @@ static struct resource resources_qup_i2c_gsbi4[] = {
 		.end	= GSBI4_QUP_IRQ,
 		.flags	= IORESOURCE_IRQ,
 	},
-#if defined(CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_T6_UL)
+#if defined(CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_T6_UL) || defined(CONFIG_MACH_T6_DWG)
 	{
 		.name	= "i2c_clk",
 		.start	= 13,

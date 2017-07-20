@@ -106,6 +106,14 @@ static struct snd_pcm_hw_constraint_list constraints_sample_rates = {
 	.mask = 0,
 };
 
+static struct msm_compr_q6_ops default_cops;
+static struct msm_compr_q6_ops *cops = &default_cops;
+
+void htc_register_compr_q6_ops(struct msm_compr_q6_ops *ops)
+{
+	cops = ops;
+}
+
 static void compr_event_handler(uint32_t opcode,
 		uint32_t token, uint32_t *payload, void *priv)
 {
@@ -905,7 +913,7 @@ static int msm_compr_hw_params(struct snd_pcm_substream *substream,
 	struct snd_dma_buffer *dma_buf = &substream->dma_buffer;
 	struct audio_buffer *buf;
 	int dir, ret;
-#if defined (CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_M4_UL) || defined(CONFIG_MACH_T6_UL) || defined(CONFIG_MACH_ZARA)
+#if defined (CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_M4_UL) || defined(CONFIG_MACH_T6_UL) || defined(CONFIG_MACH_T6_DWG) || defined(CONFIG_MACH_ZARA)
 	short bit_width = 24;
 #else
 	short bit_width = 16;

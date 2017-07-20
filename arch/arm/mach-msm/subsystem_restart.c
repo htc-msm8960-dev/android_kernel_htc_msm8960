@@ -165,6 +165,9 @@ static int n_restart_orders;
 
 static int restart_level = RESET_SUBSYS_INDEPENDENT;
 
+static struct subsys_soc_restart_order *_update_restart_order(
+		struct subsys_data *subsys);
+
 int get_restart_level()
 {
 	return restart_level;
@@ -321,6 +324,36 @@ static void for_each_subsys_device(struct subsys_device **list, unsigned count,
 			continue;
 		fn(dev, data);
 	}
+}
+
+static struct subsys_soc_restart_order *_update_restart_order(
+		struct subsys_data *subsys)
+{
+	int i, j;
+	struct subsys_soc_restart_order *order;
+	
+	if (!subsys)
+		return NULL;
+
+	if (!subsys->name)
+		return NULL;
+
+	mutex_lock(&soc_order_reg_lock);
+	for (j = 0; j < n_restart_orders; j++) {
+		order = restart_orders[j];
+		for (i = 0; i < order->count; i++)
+			if (!strncmp(order->subsystem_list[i],
+				subsys->name, SUBSYS_NAME_MAX_LENGTH)) {
+
+					order->subsys_ptrs[i] = (struct subsys_device*)subsys;
+					mutex_unlock(&soc_order_reg_lock);
+					return order;
+			}
+	}
+
+	mutex_unlock(&soc_order_reg_lock);
+
+	return NULL;
 }
 
 static void __send_notification_to_order(struct subsys_device *dev, void *data)
@@ -550,6 +583,37 @@ found:
 	return -ENODEV;
 }
 EXPORT_SYMBOL(subsystem_restart);
+
+int ssr_register_subsystem(struct subsys_data *subsys)
+{
+	//unsigned long flags;
+
+	if (!subsys)
+		goto err;
+
+	if (!subsys->name)
+		goto err;
+
+	if (!subsys->powerup || !subsys->shutdown)
+		goto err;
+
+	subsys->notif_handle = subsys_notif_add_subsys(subsys->name);
+	subsys->restart_order = _update_restart_order(subsys);
+	subsys->single_restart_list[0] = subsys;
+
+	mutex_init(&subsys->shutdown_lock);
+	mutex_init(&subsys->powerup_lock);
+
+	mutex_lock(&subsystem_list_lock);
+	list_add(&subsys->list, &subsystem_list);
+	mutex_unlock(&subsystem_list_lock);
+
+	return 0;
+
+err:
+	return -EINVAL;
+}
+EXPORT_SYMBOL(ssr_register_subsystem);
 
 struct subsys_device *subsys_register(struct subsys_desc *desc)
 {

@@ -185,6 +185,13 @@ struct asm_mmap {
 };
 
 static struct asm_mmap this_mmap;
+static struct q6asm_ops default_qops;
+static struct q6asm_ops *qops = &default_qops;
+
+void htc_register_q6asm_ops(struct q6asm_ops *ops)
+{
+	qops = ops;
+}
 
 static int q6asm_session_alloc(struct audio_client *ac)
 {

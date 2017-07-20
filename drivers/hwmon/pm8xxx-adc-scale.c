@@ -213,6 +213,12 @@ static const struct pm8xxx_adc_map_pt adcmap_btm_threshold[] = {
 	{790,	203}
 #endif
 };
+static struct pm8xxx_adc_map_table default_adcmap_btm = {
+	.table = adcmap_btm_threshold,
+	.size = ARRAY_SIZE(adcmap_btm_threshold),
+};
+
+static struct pm8xxx_adc_map_table *adcmap_btm_table = &default_adcmap_btm;
 
 static const struct pm8xxx_adc_map_pt adcmap_pa_therm[] = {
 #ifdef CONFIG_MACH_HTC
@@ -756,6 +762,12 @@ static int32_t pm8xxx_adc_map_batt_therm(const struct pm8xxx_adc_map_pt *pts,
 
 	return 0;
 }
+
+void pm8xxx_adc_set_adcmap_btm_table(struct pm8xxx_adc_map_table *adcmap_table)
+{
+	adcmap_btm_table = adcmap_table;
+}
+EXPORT_SYMBOL_GPL(pm8xxx_adc_set_adcmap_btm_table);
 
 int32_t pm8xxx_adc_scale_default(int32_t adc_code,
 		const struct pm8xxx_adc_properties *adc_properties,

@@ -101,6 +101,7 @@ struct msm_mmc_pad_drv {
 
 struct msm_mmc_pad_drv_data {
 	struct msm_mmc_pad_drv *on;
+	struct msm_mmc_pad_drv *on_SDR104;
 	struct msm_mmc_pad_drv *off;
 	u8 size;
 };
@@ -144,6 +145,7 @@ struct mmc_platform_data {
 	unsigned int uhs_caps;
 	/* More capabilities */
 	unsigned int uhs_caps2;
+	unsigned int *slot_type;
 	/* Supported packed write */
 	unsigned int packed_write;
 	void (*sdio_lpm_gpio_setup)(struct device *, unsigned int);
@@ -159,6 +161,11 @@ struct mmc_platform_data {
 	unsigned int msmsdcc_fmid;
 	unsigned int msmsdcc_fmax;
 	bool nonremovable;
+	bool hc_erase_group_def;
+	bool pack_cmd_support;
+	bool sanitize_support;
+	bool cache_support;
+	bool bkops_support;
 	unsigned int mpm_sdiowakeup_int;
 	int wpswitch_gpio;
 	bool is_wpswitch_active_low;

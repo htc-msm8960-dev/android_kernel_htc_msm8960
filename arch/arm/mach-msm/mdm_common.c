@@ -77,6 +77,10 @@ static LIST_HEAD(mdm_driver_list);
 static DEFINE_MUTEX(mdm_driver_list_lock);
 static DEFINE_MUTEX(mdm_driver_list_add_lock);
 
+#ifdef CONFIG_QSC_MODEM
+static struct mdm_modem_drv *mdm_drv;
+#endif
+
 struct mdm_device {
 	struct list_head		link;
 	struct mdm_modem_drv	mdm_data;
@@ -660,6 +664,17 @@ static void mdm_status_fn(struct work_struct *work)
 	mdm_update_gpio_configs(mdev, GPIO_UPDATE_RUNNING_CONFIG);
 }
 
+#ifdef CONFIG_QSC_MODEM
+void qsc_boot_after_mdm_bootloader(int state);
+static void qsc_boot_up_fn(struct work_struct *work)
+{
+	free_irq(mdm_drv->mdm2ap_bootloader_irq, NULL);
+
+	qsc_boot_after_mdm_bootloader(MDM_BOOTLOAER_GPIO_IRQ_RECEIVED);
+}
+static DECLARE_WORK(qsc_boot_up_work, qsc_boot_up_fn);
+#endif
+
 static void mdm_disable_irqs(struct mdm_device *mdev)
 {
 	if (!mdev)
@@ -776,6 +791,18 @@ static irqreturn_t mdm_status_change(int irq, void *dev_id)
 	}
 	return IRQ_HANDLED;
 }
+
+#ifdef CONFIG_QSC_MODEM
+static irqreturn_t mdm_in_bootloader(int irq, void *dev_id)
+{
+	struct mdm_device *mdev = (struct mdm_device *)dev_id;
+	pr_info("%s: got mdm2ap_bootloader interrupt\n", __func__);
+
+	queue_work(mdev->mdm_queue, &qsc_boot_up_work);
+
+	return IRQ_HANDLED;
+}
+#endif
 
 static irqreturn_t mdm_pblrdy_change(int irq, void *dev_id)
 {
@@ -1100,6 +1127,10 @@ static void mdm_deconfigure_ipc(struct mdm_device *mdev)
 		gpio_free(mdm_drv->ap2mdm_ipc1_gpio);
 #endif
 
+#ifdef CONFIG_QSC_MODEM
+	gpio_free(mdm_drv->mdm2ap_bootloader_gpio);
+#endif
+
 	if (mdev->mdm_queue) {
 		destroy_workqueue(mdev->mdm_queue);
 		mdev->mdm_queue = NULL;
@@ -1153,6 +1184,9 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 		gpio_direction_output(mdm_drv->ap2mdm_ipc1_gpio, 0);
 	}
 #endif
+#ifdef CONFIG_QSC_MODEM
+	gpio_request(mdm_drv->mdm2ap_bootloader_gpio, "MDM2AP_BOOTLOADER");
+#endif
 
 	gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 0);
 	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 0);
@@ -1162,6 +1196,12 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 
 	gpio_direction_input(mdm_drv->mdm2ap_status_gpio);
 	gpio_direction_input(mdm_drv->mdm2ap_errfatal_gpio);
+	
+#ifdef CONFIG_QSC_MODEM
+	
+	gpio_tlmm_config(GPIO_CFG((mdm_drv->mdm2ap_bootloader_gpio),  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_direction_input(mdm_drv->mdm2ap_bootloader_gpio);  
+#endif
 
 	mdev->mdm_queue = alloc_workqueue("mdm_queue", 0, 0);
 	if (!mdev->mdm_queue) {
@@ -1250,6 +1290,31 @@ status_err:
 		}
 		mdev->mdm_pblrdy_irq = irq;
 	}
+
+#ifdef CONFIG_QSC_MODEM
+	
+	irq = MSM_GPIO_TO_INT(mdm_drv->mdm2ap_bootloader_gpio);
+	if (irq < 0) {
+		pr_err("%s: could not get mdm2ap_bootloader irq resource, error=%d. Skip waiting for MDM_BOOTLOADER interrupt.",
+			__func__, irq);
+	}
+	else
+	{
+		ret = request_threaded_irq(irq, NULL, mdm_in_bootloader, IRQF_TRIGGER_RISING, "mdm in bootloader", NULL);
+
+		if (ret < 0) {
+			pr_err("%s: mdm2ap_bootloader irq request failed with error=%d. Skip waiting for MDM_BOOTLOADER interrupt.",
+				__func__, ret);
+		}
+		else
+		{
+			qsc_boot_after_mdm_bootloader(MDM_BOOTLOAER_GPIO_IRQ_REGISTERED);
+			mdm_drv->mdm2ap_bootloader_irq = irq;
+			pr_info("%s: Registered mdm2ap_bootloader irq, gpio<%d> irq<%d> ret<%d>\n"
+			, __func__, mdm_drv->mdm2ap_bootloader_gpio, irq, ret);
+		}
+	}
+#endif
 
 pblrdy_err:
 	/*

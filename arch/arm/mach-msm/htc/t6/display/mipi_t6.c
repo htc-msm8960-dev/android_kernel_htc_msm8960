@@ -18,7 +18,11 @@
 #include "../../../../drivers/video/msm/msm_fb.h"
 #include "../../../../drivers/video/msm/mipi_dsi.h"
 
+#if defined(CONFIG_MACH_T6_UL)
 #include "../board-t6.h"
+#elif defined(CONFIG_MACH_T6_DWG)
+#include "../board-t6dwg.h"
+#endif
 
 #ifdef MDP_GAMMA
 #include "mdp_gamma_renesas.h"

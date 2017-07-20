@@ -232,6 +232,14 @@ static struct msm_pcm_routing_fdai_data
 	{0, INVALID_SESSION, {NULL, NULL} } },
 };
 
+static struct msm_pcm_routing_ops default_rops;
+static struct msm_pcm_routing_ops *rops = &default_rops;
+
+void htc_register_pcm_routing_ops(struct msm_pcm_routing_ops *ops)
+{
+	rops = ops;
+}
+
 static uint8_t is_be_dai_extproc(int be_dai)
 {
 	if (be_dai == MSM_BACKEND_DAI_EXTPROC_RX ||
