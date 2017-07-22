@@ -132,6 +132,8 @@
 	} \
 }
 
+extern unsigned htc_get_rfid(void);
+
 struct pm8xxx_gpio_init {
 	unsigned			gpio;
 	struct pm_gpio			config;
@@ -276,6 +278,20 @@ static void __init reserve_rtb_memory(void)
 			apq8064_rtb_pdata.size);
 #endif
 }
+
+#ifdef CONFIG_I2C
+#define MSM8064_GSBI2_QUP_I2C_BUS_ID 2
+#define MSM8064_GSBI3_QUP_I2C_BUS_ID 3
+
+#ifdef CONFIG_VIDEO_NMI
+static struct i2c_board_info nmi625_i2c_info[] = {
+	{
+		I2C_BOARD_INFO("nmi625", 0x61),
+	},
+};
+#endif 
+
+#endif
 
 static void __init size_pmem_devices(void)
 {
@@ -940,6 +956,23 @@ void msm_hsusb_setup_gpio(enum usb_otg_state state)
 }
 
 #define BOOST_5V	"ext_5v"
+static DEFINE_MUTEX(io_expander_lock);
+static void io_expander_write_data(int bit, bool enable)
+{
+	uint8_t data[4];
+	mutex_lock(&io_expander_lock);
+	ioext_i2c_read(IOEXTENDER_I2C_GPO_DATA_OUT, data, 2);
+	pr_info("[IO EXPANDER] %s ioext 0x24 %x\n", __func__, data[1]);
+	if (enable)
+		data[1] = data[1] | (1 << bit);
+	else
+		data[1] = ~(~data[1] | (1 << bit));
+	ioext_i2c_write(IOEXTENDER_I2C_GPO_DATA_OUT, data, 2);
+	ioext_i2c_read(IOEXTENDER_I2C_GPO_DATA_OUT, data, 2);
+	pr_info("[IO EXTANDER] %s ioext 0x24 %x\n", __func__, data[1]);
+	mutex_unlock(&io_expander_lock);
+}
+
 static int msm_hsusb_vbus_power(bool on)
 {
 	static struct regulator *reg_boost_5v = NULL;
@@ -948,7 +981,7 @@ static int msm_hsusb_vbus_power(bool on)
 
 	if (on == prev_on)
 		return 0;
-
+if (system_rev == XA) {
 	if (!reg_boost_5v)
 		_GET_REGULATOR(reg_boost_5v, BOOST_5V);
 
@@ -965,7 +998,13 @@ static int msm_hsusb_vbus_power(bool on)
 			pr_warning("'%s' regulator disable failed, rc=%d\n",
 				BOOST_5V, rc);
 	}
-
+} else {
+		if (on)
+			io_expander_write_data(0, true);
+		else
+			io_expander_write_data(0, false);
+	}
+	
 	pr_info("%s(%s): success\n", __func__, on?"on":"off");
 
 	prev_on = on;
@@ -2386,13 +2425,26 @@ static DEFINE_MUTEX(cir_path_lock);
 
 static int cir_power(int on)
 {
+	uint8_t rdata[4];
 	mutex_lock(&cir_power_lock);
 	pr_info("[CIR] %s on = %d\n", __func__, on);
 
 	if (board_mfg_mode() == MFG_MODE_POWER_TEST) {
 		pr_info("[CIR] %s recovery mode, power off CIR\n", __func__);
 		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_CIR_LS_EN),0);
-		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_V_CIR_3V_EN),0);
+		if (system_rev == XA)
+			gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_V_CIR_3V_EN),0);
+		else {
+			mutex_lock(&io_expander_lock);
+			ioext_i2c_read(IOEXTENDER_I2C_GPO_DATA_OUT, rdata, 2);
+			pr_info("[CIR] %s ioext 0x24 %x\n", __func__, rdata[1]);
+			
+			rdata[1] = ~(~rdata[1] | 0x02);
+			ioext_i2c_write(IOEXTENDER_I2C_GPO_DATA_OUT, rdata, 2);
+			ioext_i2c_read(IOEXTENDER_I2C_GPO_DATA_OUT, rdata, 2);
+			pr_info("[CIR] %s ioext 0x24 %x\n", __func__, rdata[1]);
+			mutex_unlock(&io_expander_lock);
+		}
 		pm8xxx_gpio_config(cir_rst_gpio_enable.gpio, &cir_rst_gpio_enable.config);
 		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_CIR_RSTz),0);
 		mutex_unlock(&cir_power_lock);
@@ -2401,7 +2453,19 @@ static int cir_power(int on)
 
 	if (on) {
 		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_CIR_LS_EN),1);
-		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_V_CIR_3V_EN),1);
+		if (system_rev == XA)
+			gpio_direction_output(PM8921_GPIO_PM_TO_SYS(PM_V_CIR_3V_EN),1);
+		else {
+			mutex_lock(&io_expander_lock);
+			ioext_i2c_read(IOEXTENDER_I2C_GPO_DATA_OUT, rdata, 2);
+			pr_info("[CIR] %s ioext 0x24 %x\n", __func__, rdata[1]);
+			
+			rdata[1] = rdata[1] | 0x02;
+			ioext_i2c_write(IOEXTENDER_I2C_GPO_DATA_OUT, rdata, 2);
+			ioext_i2c_read(IOEXTENDER_I2C_GPO_DATA_OUT, rdata, 2);
+			pr_info("[CIR] %s ioext 0x24 %x\n", __func__, rdata[1]);
+			mutex_unlock(&io_expander_lock);
+		}
 
 		pm8xxx_gpio_config(cir_rst_gpio_disable.gpio, &cir_rst_gpio_disable.config);
 		gpio_direction_input(PM8921_GPIO_PM_TO_SYS(PM_CIR_RSTz));
@@ -2433,12 +2497,14 @@ static struct cir_platform_data t6dwg_cir_gsbi3_pdata = {
 static void __init t6dwg_cir_init(void)
 {
 	gpio_request(PM8921_GPIO_PM_TO_SYS(PM_CIR_LS_EN), "cir_ls_en");
-	gpio_request(PM8921_GPIO_PM_TO_SYS(PM_V_CIR_3V_EN), "v_cir_3v_en");
+	if (system_rev == XA)
+		gpio_request(PM8921_GPIO_PM_TO_SYS(PM_V_CIR_3V_EN), "v_cir_3v_en");
 	gpio_request(PM8921_GPIO_PM_TO_SYS(PM_CIR_RSTz), "cir_reset");
 
 	msm_uart_gsbi3_gpio_init();
 	pm8xxx_gpio_config(cir_ls_en_gpio.gpio, &cir_ls_en_gpio.config);
-	pm8xxx_gpio_config(cir_3v_en_gpio.gpio, &cir_3v_en_gpio.config);
+	if (system_rev == XA)
+		pm8xxx_gpio_config(cir_3v_en_gpio.gpio, &cir_3v_en_gpio.config);
 	pm8xxx_gpio_config(cir_rst_gpio_disable.gpio, &cir_rst_gpio_disable.config);
 	apq8064_device_uart_gsbi3.dev.platform_data =
 					&t6dwg_cir_gsbi3_pdata;
@@ -4095,6 +4161,68 @@ static struct i2c_board_info i2c_CM36282_devices[] = {
 	},
 };
 
+static void gsbi2_ioext_reset_chip(void)
+{
+	uint8_t rdara[4];
+	uint8_t wdata[4]={0};
+	printk(KERN_INFO "[IOEXT] %s START\n", __func__);
+	
+	gpio_direction_output(PM8921_GPIO_PM_TO_SYS(IO_EXT_RSTz), 1);
+	msleep(10);
+	gpio_direction_output(PM8921_GPIO_PM_TO_SYS(IO_EXT_RSTz), 0);
+	msleep(10);
+	gpio_direction_output(PM8921_GPIO_PM_TO_SYS(IO_EXT_RSTz), 1);
+	msleep(100);
+	
+	ioext_i2c_read(0x00, rdara, 1);
+	printk(KERN_INFO "[IOEXT] %s [R] ChipID(0x00) = 0x%x\n", __func__, rdara[0]);
+	
+	wdata[0] = 0x00; 
+	wdata[1] = 0x00; 
+	ioext_i2c_write(IOEXTENDER_I2C_GPIO_USAGE, wdata, 2);
+	printk(KERN_INFO "[IOEXT] %s [W] PIN_CONFIG (0x38~0x39) Reg\n", __func__);
+	
+	wdata[0] = 0xFF;	
+	wdata[1] = 0x0F;	
+	wdata[2] = 0xFF;	
+	wdata[3] = 0x0F;	
+	ioext_i2c_write(IOEXTENDER_I2C_RPULL_CONFIG, wdata, 4);
+	printk(KERN_INFO "[IOEXT] %s [W] RPULL_CONFIG_A (0x17~0x1A Reg\n", __func__);
+	
+	wdata[0] = 0x3F;	
+	wdata[1] = 0x1F;	
+	ioext_i2c_write(IOEXTENDER_I2C_GPIO_DIRECTION, wdata, 2);
+	printk(KERN_INFO "[IOEXT] %s [W] GPIO_DIRECTION (0x27~0x28) Reg\n", __func__);
+	
+	wdata[0] = 0x00;	
+	wdata[1] = 0x00;	
+	ioext_i2c_write(IOEXTENDER_I2C_GPO_OUT_MODE, wdata, 2);
+	printk(KERN_INFO "[IOEXT] %s [W] GPO_OUT_MODE (0x25~0x26) Reg\n", __func__);
+	
+	wdata[0] = 0x04;	
+	if (system_rev == XA)
+		wdata[1] = 0x00;	
+	else
+		wdata[1] = 0x02;
+	ioext_i2c_write(IOEXTENDER_I2C_GPO_DATA_OUT, wdata, 2);
+	printk(KERN_INFO "[IOEXT] %s [W] GPO_DATA_OUT (0x23~0x24) Reg\n", __func__);
+	printk(KERN_INFO "[IOEXT] %s END\n", __func__);
+	return;
+}
+static struct platform_device ioext_devices[] = {
+};
+static struct ioext_i2c_platform_data gsbi2_ioext_data = {
+	.num_devices = ARRAY_SIZE(ioext_devices),
+	.ioext_devices = ioext_devices,
+	.reset_chip = gsbi2_ioext_reset_chip,
+};
+static struct i2c_board_info gsbi2_ioext_devices[] = {
+	{
+		I2C_BOARD_INFO(IOEXTENDER_I2C_NAME, 0x68 >> 1),
+		.platform_data = &gsbi2_ioext_data,
+	},
+};
+
 static int t6dwg_mpu3050_sensor_power_LPM(int on)
 {
 	int rc = 0;
@@ -4245,12 +4373,39 @@ static struct i2c_board_info __initdata mpu3050_GSBI12_boardinfo[] = {
 static void nfc_gpio_init(void)
 {
 	static uint32_t nfc_gpio_table[] = {
-	GPIO_CFG(MSM_NFC_IRQ, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(NFC_IRQ, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	};
 	printk(KERN_INFO"[NFC] %s, config NFC_IRQ pin\n",__func__);
 	gpio_tlmm_config(nfc_gpio_table[0], GPIO_CFG_ENABLE);
 	return;
 }
+/*static void nfc_gpio_deinit(void)
+{
+	static uint32_t nfc_gpio_table[] = {
+	GPIO_CFG(NFC_IRQ, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	};
+	printk(KERN_INFO"[NFC] %s, config NFC_IRQ pin\n",__func__);
+	gpio_tlmm_config(nfc_gpio_table[0], GPIO_CFG_ENABLE);
+	
+	gpio_set_value(PM8921_GPIO_PM_TO_SYS(NFC_VEN), 0);
+	return;
+}*/
+#define HAS_NFC_CHIP 0x7000000
+/*static int nfc_init_check(void)
+{
+	unsigned int htc_rfid = 0;
+	
+	htc_rfid = htc_get_rfid();
+	printk(KERN_ERR "%s: htc_rfid=[0x%08X].\n", __func__, htc_rfid);
+	if ( HAS_NFC_CHIP == htc_rfid ) {
+		printk(KERN_ERR "%s: htc_rfid=[0x%08X], with NFC chip.\n", __func__, htc_rfid);
+		return 1;
+	}
+	else {
+		printk(KERN_ERR "%s: htc_rfid=[0x%08X], without NFC chip\n", __func__, htc_rfid);
+		return 0;
+	}
+}*/
 
 #define WITHOUT_NFC_CHIP_T6U_CHINA 0x00037E08
 
@@ -4289,6 +4444,8 @@ static struct TPS61310_flashlight_platform_data flashlight_data = {
 	.flash_duration_ms = 600,
 	.enable_FLT_1500mA = 1,
 	.led_count = 1,
+	.power_save = PM8921_GPIO_PM_TO_SYS(APQ2MDM_IPC2_XB),
+	.power_save_2 = PM8921_MPP_PM_TO_SYS(7),
 	.disable_tx_mask = 1,
 };
 
@@ -4296,6 +4453,24 @@ static struct i2c_board_info i2c_tps61310_flashlight[] = {
 	{
 		I2C_BOARD_INFO("TPS61310_FLASHLIGHT", 0x66 >> 1),
 		.platform_data = &flashlight_data,
+	},
+};
+static struct TPS61310_flashlight_platform_data flashlight_data_xb = {
+	.gpio_init = config_flashlight_gpios,
+	.tps61310_strb0 = PM8921_GPIO_PM_TO_SYS(PM_FLASH_EN),
+	.tps61310_strb1 = PM8921_GPIO_PM_TO_SYS(PM_TORCH_FLASHz),
+	.flash_duration_ms = 600,
+	.enable_FLT_1500mA = 1,
+	.led_count = 1,
+	.power_save = PM8921_GPIO_PM_TO_SYS(APQ2MDM_IPC2_XB),
+	.power_save_2 = PM8921_MPP_PM_TO_SYS(7),
+	.disable_tx_mask = 1,
+};
+
+static struct i2c_board_info i2c_tps61310_flashlight_xb[] = {
+	{
+		I2C_BOARD_INFO("TPS61310_FLASHLIGHT", 0x66 >> 1),
+		.platform_data = &flashlight_data_xb,
 	},
 };
 #endif
@@ -4573,14 +4748,6 @@ static struct i2c_registry t6dwg_i2c_devices[] __initdata = {
 		ARRAY_SIZE(pn544_i2c_boardinfo),
 	},
 #endif
-#ifdef CONFIG_FLASHLIGHT_TPS61310
-	{
-		I2C_SURF | I2C_FFA,
-		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
-		i2c_tps61310_flashlight,
-		ARRAY_SIZE(i2c_tps61310_flashlight),
-	},
-#endif
 #ifdef CONFIG_FB_MSM_HDMI_MHL
 #ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
 	{
@@ -4591,6 +4758,12 @@ static struct i2c_registry t6dwg_i2c_devices[] __initdata = {
 	},
 #endif
 #endif
+	{
+	    I2C_SURF | I2C_FFA ,
+	    MSM8064_GSBI2_QUP_I2C_BUS_ID,
+	    gsbi2_ioext_devices,
+	    ARRAY_SIZE(gsbi2_ioext_devices),
+	},
 };
 
 extern int gy_type;
@@ -4616,6 +4789,23 @@ static void __init register_i2c_devices(void)
 						t6dwg_i2c_devices[i].len);
 		}
 	}
+
+#ifdef CONFIG_FLASHLIGHT_TPS61310
+	
+	if (system_rev <= XA) {
+		if((I2C_SURF | I2C_FFA) & mach_mask) {
+			i2c_register_board_info(MSM8064_GSBI2_QUP_I2C_BUS_ID,
+				i2c_tps61310_flashlight, ARRAY_SIZE(i2c_tps61310_flashlight));
+		}
+	}
+	
+	if (system_rev > XA) {
+		if((I2C_SURF | I2C_FFA) & mach_mask) {
+			i2c_register_board_info(MSM8064_GSBI2_QUP_I2C_BUS_ID,
+				i2c_tps61310_flashlight_xb, ARRAY_SIZE(i2c_tps61310_flashlight_xb));
+		}
+	}
+#endif
 
 	if (gy_type == 2) {
 		printk("gy_type == 2, R3GD20");
@@ -4801,6 +4991,7 @@ static void __init t6dwg_cdp_init(void)
 
 extern int parse_tag_memsize(const struct tag *tags);
 unsigned skuid;
+
 static unsigned int mem_size_mb;
 
 static void __init t6dwg_fixup(struct tag *tags, char **cmdline, struct meminfo *mi)
