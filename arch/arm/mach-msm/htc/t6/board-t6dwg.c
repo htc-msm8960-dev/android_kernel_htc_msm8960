@@ -1532,12 +1532,6 @@ static struct msm_bus_vectors qseecom_enable_dfab_vectors[] = {
 		.ib = 70000000UL,
 	},
 	{
-		.src = MSM_BUS_MASTER_ADM_PORT1,
-		.dst = MSM_BUS_SLAVE_GSBI1_UART,
-		.ab = 2480000000UL,
-		.ib = 2480000000UL,
-	},
-	{
 		.src = MSM_BUS_MASTER_SPDM,
 		.dst = MSM_BUS_SLAVE_SPDM,
 		.ib = 0,
@@ -1549,12 +1543,6 @@ static struct msm_bus_vectors qseecom_enable_sfpb_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_ADM_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 0,
-		.ib = 0,
-	},
-	{
-		.src = MSM_BUS_MASTER_ADM_PORT1,
-		.dst = MSM_BUS_SLAVE_GSBI1_UART,
 		.ab = 0,
 		.ib = 0,
 	},
@@ -1758,6 +1746,14 @@ static struct mdm_platform_data mdm_platform_data = {
 	.ramdump_timeout_ms = 600000,
 	.no_powerdown_after_ramdumps = 1,
 	.image_upgrade_supported = 1,
+};
+
+uint32_t apq_mdm_gpio_setting_table[] = {
+        GPIO_CFG(MSM_MDM2AP_HSIC_READY,  0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+        GPIO_CFG(MSM_MDM2AP_ERR_FATAL,  0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+        GPIO_CFG(MDM2AP_WAKEUP,  0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+        GPIO_CFG(MDM2AP_STATUS,  0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+        GPIO_CFG(MSM_MDM2AP_VDDMIN,  0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
 static struct resource mdm_resources[] = {
@@ -4917,6 +4913,7 @@ static void __init t6dwg_common_init(void)
 	t6china_init_mmc();
 
 	pr_info("%s: Add MDM2 device\n", __func__);
+	config_gpio_table(apq_mdm_gpio_setting_table, ARRAY_SIZE(apq_mdm_gpio_setting_table));
 	mdm_t6dwg_device.dev.platform_data = &mdm_platform_data;
 	platform_device_register(&mdm_t6dwg_device);
 	

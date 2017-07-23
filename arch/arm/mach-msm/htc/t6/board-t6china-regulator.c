@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,29 +13,8 @@
 
 #include <linux/regulator/pm8xxx-regulator.h>
 
-//include "board-t6china.h"
-#if defined(CONFIG_MACH_M7_DCG)
-#include "board-m7dcg.h"
-#elif defined(CONFIG_MACH_M7_DTU)
-#include "board-m7dtu.h"
-#elif defined(CONFIG_MACH_M7_DUG)
-#include "board-m7dug.h"
-#elif defined(CONFIG_MACH_M7C_DTU)
-#include "board-m7cdtu.h"
-#elif defined(CONFIG_MACH_M7C_DUG)
-#include "board-m7cdug.h"
-#elif defined(CONFIG_MACH_M7C_DWG)
-#include "board-m7cdwg.h"
-#elif defined(CONFIG_MACH_DLP_DTU)
-#include "board-dlp_dtu.h"
-#elif defined(CONFIG_MACH_DLP_DUG)
-#include "board-dlp_dug.h"
-#elif defined(CONFIG_MACH_DLP_DWG)
-#include "board-dlp_dwg.h"
-#elif defined(CONFIG_MACH_T6_TL)
-#include "board-t6tl.h"
-#elif defined(CONFIG_MACH_T6_DUG)
-#include "board-t6dug.h"
+#if defined(CONFIG_MACH_T6_UL)
+#include "board-t6.h"
 #elif defined(CONFIG_MACH_T6_DWG)
 #include "board-t6dwg.h"
 #endif
@@ -43,6 +22,7 @@
 #define VREG_CONSUMERS(_id) \
 	static struct regulator_consumer_supply vreg_consumers_##_id[]
 
+/* Regulators that are present when using either PM8921 or PM8917 */
 /*
  * Consumer specific regulator names:
  *			 regulator name		consumer dev_name
@@ -54,9 +34,10 @@ VREG_CONSUMERS(L2) = {
 	REGULATOR_SUPPLY("8921_l2",		NULL),
 	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csiphy.0"),
 	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csiphy.1"),
-	REGULATOR_SUPPLY("mipi_csi_vdd",        "msm_csiphy.2"),
+	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csiphy.2"),
 	REGULATOR_SUPPLY("lvds_pll_vdda",	"lvds.0"),
 	REGULATOR_SUPPLY("dsi1_pll_vdda",	"mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi_pll_vdda",	"mdp.0"),
 };
 VREG_CONSUMERS(L3) = {
 	REGULATOR_SUPPLY("8921_l3",		NULL),
@@ -120,34 +101,30 @@ VREG_CONSUMERS(L16) = {
 };
 VREG_CONSUMERS(L17) = {
 	REGULATOR_SUPPLY("8921_l17",		NULL),
-	REGULATOR_SUPPLY("8921_l17_g_sensor",   NULL),
-	REGULATOR_SUPPLY("8921_l17_compass",    NULL),
-	REGULATOR_SUPPLY("8921_l17_gyro",       NULL),
+	REGULATOR_SUPPLY("8921_l17_g_sensor",	NULL),
+	REGULATOR_SUPPLY("8921_l17_compass",	NULL),
+	REGULATOR_SUPPLY("8921_l17_gyro",	NULL),
 };
 VREG_CONSUMERS(L18) = {
 	REGULATOR_SUPPLY("8921_l18",		NULL),
 };
 VREG_CONSUMERS(L21) = {
 	REGULATOR_SUPPLY("8921_l21",		NULL),
-	REGULATOR_SUPPLY("8921_l21_g_sensor",   NULL),
-	REGULATOR_SUPPLY("8921_l21_compass",    NULL),
-	REGULATOR_SUPPLY("8921_l21_gyro",       NULL),
+	REGULATOR_SUPPLY("8921_l21_g_sensor",	NULL),
+	REGULATOR_SUPPLY("8921_l21_compass",	NULL),
+	REGULATOR_SUPPLY("8921_l21_gyro",	NULL),
 	REGULATOR_SUPPLY("8921_l21_pl_sensor",	NULL),
 	REGULATOR_SUPPLY("8921_l21_motion_sensor",	NULL),
-	REGULATOR_SUPPLY("8921_l21_touch",      NULL),
+	REGULATOR_SUPPLY("8921_l21_touch",	NULL),
 };
 VREG_CONSUMERS(L22) = {
 	REGULATOR_SUPPLY("8921_l22",		NULL),
-	REGULATOR_SUPPLY("dsi1_avdd",           "mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi1_avdd",		"mipi_dsi.1"),
 };
-#if 1
 VREG_CONSUMERS(L23) = {
 	REGULATOR_SUPPLY("8921_l23",		NULL),
 	REGULATOR_SUPPLY("tfa9887_vdd",		NULL),
-//	REGULATOR_SUPPLY("pll_vdd",		"pil_qdsp6v4.1"),
-//	REGULATOR_SUPPLY("pll_vdd",		"pil_qdsp6v4.2"),
 };
-#endif
 VREG_CONSUMERS(L24) = {
 	REGULATOR_SUPPLY("8921_l24",		NULL),
 	REGULATOR_SUPPLY("riva_vddmx",		"wcnss_wlan.0"),
@@ -167,12 +144,6 @@ VREG_CONSUMERS(L27) = {
 	REGULATOR_SUPPLY("8921_l27",		NULL),
 	REGULATOR_SUPPLY("core_vdd",		"pil_qdsp6v4.2"),
 };
-#if 0
-VREG_CONSUMERS(L28) = {
-	REGULATOR_SUPPLY("8921_l28",		NULL),
-	REGULATOR_SUPPLY("core_vdd",		"pil_qdsp6v4.1"),
-};
-#endif
 VREG_CONSUMERS(L29) = {
 	REGULATOR_SUPPLY("8921_l29",		NULL),
 };
@@ -250,6 +221,7 @@ VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("8921_lvs7",		NULL),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_riva"),
 	REGULATOR_SUPPLY("lvds_vdda",		"lvds.0"),
+	REGULATOR_SUPPLY("dsi_pll_vddio",	"mdp.0"),
 };
 VREG_CONSUMERS(USB_OTG) = {
 	REGULATOR_SUPPLY("8921_usb_otg",	NULL),
@@ -275,21 +247,6 @@ VREG_CONSUMERS(EXT_5V) = {
 VREG_CONSUMERS(EXT_MPP8) = {
 	REGULATOR_SUPPLY("ext_mpp8",		NULL),
 };
-#if 0
-VREG_CONSUMERS(EXT_3P3V) = {
-	REGULATOR_SUPPLY("ext_3p3v",		NULL),
-	REGULATOR_SUPPLY("vdd_io",		"spi0.2"),
-	REGULATOR_SUPPLY("mhl_ext_3p3v",	"msm_otg"),
-	REGULATOR_SUPPLY("lvds_vccs_3p3v",      "lvds.0"),
-	REGULATOR_SUPPLY("dsi1_vccs_3p3v",      "mipi_dsi.1"),
-};
-#endif
-#if 0 /* HTC_BT del: remove PMIC GPIO conflict */
-VREG_CONSUMERS(EXT_TS_SW) = {
-	REGULATOR_SUPPLY("ext_ts_sw",		NULL),
-	REGULATOR_SUPPLY("vdd_ana",		"3-005b"),
-};
-#endif
 
 #define PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, _modes, _ops, \
 			 _apply_uV, _pull_down, _always_on, _supply_regulator, \
@@ -406,7 +363,8 @@ VREG_CONSUMERS(EXT_TS_SW) = {
 	{ \
 		.constraints = { \
 			.name		= _name, \
-			.valid_ops_mask	= REGULATOR_CHANGE_VOLTAGE, \
+			.valid_ops_mask	= REGULATOR_CHANGE_VOLTAGE | \
+					  REGULATOR_CHANGE_STATUS, \
 			.min_uV		= _min_uV, \
 			.max_uV		= _max_uV, \
 		}, \
@@ -416,8 +374,8 @@ VREG_CONSUMERS(EXT_TS_SW) = {
 
 #define RPM_INIT(_id, _min_uV, _max_uV, _modes, _ops, _apply_uV, _default_uV, \
 		 _peak_uA, _avg_uA, _pull_down, _pin_ctrl, _freq, _pin_fn, \
-		_force_mode, _sleep_set_force_mode, _power_mode, _state, \
-		_sleep_selectable, _always_on, _supply_regulator, _system_uA) \
+		 _force_mode, _sleep_set_force_mode, _power_mode, _state, \
+		 _sleep_selectable, _always_on, _supply_regulator, _system_uA) \
 	{ \
 		.init_data = { \
 			.constraints = { \
@@ -443,7 +401,7 @@ VREG_CONSUMERS(EXT_TS_SW) = {
 		.freq			= RPM_VREG_FREQ_##_freq, \
 		.pin_fn			= _pin_fn, \
 		.force_mode		= _force_mode, \
-		.sleep_set_force_mode   = _sleep_set_force_mode, \
+		.sleep_set_force_mode	= _sleep_set_force_mode, \
 		.power_mode		= _power_mode, \
 		.state			= _state, \
 		.sleep_selectable	= _sleep_selectable, \
@@ -463,8 +421,8 @@ VREG_CONSUMERS(EXT_TS_SW) = {
 		 _supply_regulator, _system_uA)
 
 #define RPM_SMPS(_id, _always_on, _pd, _sleep_selectable, _min_uV, _max_uV, \
-		_supply_regulator, _system_uA, _freq, _force_mode, \
-		_sleep_set_force_mode) \
+		 _supply_regulator, _system_uA, _freq, _force_mode, \
+		 _sleep_set_force_mode) \
 	RPM_INIT(_id, _min_uV, _max_uV, REGULATOR_MODE_NORMAL \
 		 | REGULATOR_MODE_IDLE, REGULATOR_CHANGE_VOLTAGE \
 		 | REGULATOR_CHANGE_STATUS | REGULATOR_CHANGE_MODE \
@@ -516,10 +474,6 @@ struct gpio_regulator_platform_data
 t6china_gpio_regulator_pdata[] __devinitdata = {
 	/*        ID      vreg_name gpio_label   gpio                  supply */
 	GPIO_VREG(EXT_5V, "ext_5v", "ext_5v_en", PM8921_MPP_PM_TO_SYS(7), NULL),
-	//GPIO_VREG(EXT_3P3V, "ext_3p3v", "ext_3p3v_en",
-	//	  t6china_EXT_3P3V_REG_EN_GPIO, NULL),
-	//GPIO_VREG(EXT_TS_SW, "ext_ts_sw", "ext_ts_sw_en",
-	//	  PM8921_GPIO_PM_TO_SYS(23), "ext_3p3v"),
 	GPIO_VREG(EXT_MPP8, "ext_mpp8", "ext_mpp8_en",
 			PM8921_MPP_PM_TO_SYS(8), NULL),
 };
@@ -554,9 +508,9 @@ t6china_pm8921_regulator_pdata[] __devinitdata = {
 
 static struct rpm_regulator_init_data
 t6china_rpm_regulator_init_data[] __devinitdata = {
-	/*      ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
+	/*	ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
 	RPM_SMPS(S1, 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20, NONE, NONE),
-	RPM_SMPS(S2, 0, 1, 0, 1300000, 1300000, NULL,      0, 1p60, NONE, NONE),
+	RPM_SMPS(S2, 0, 1, 0, 1300000, 1300000, NULL, 0, 1p60, NONE, NONE),
 	RPM_SMPS(S3, 0, 1, 1,  500000, 1150000, NULL, 100000, 4p80, NONE, NONE),
 	RPM_SMPS(S4, 1, 1, 0, 1800000, 1800000, NULL, 100000, 1p60, AUTO, AUTO),
 	RPM_SMPS(S7, 0, 0, 0, 1300000, 1300000, NULL, 100000, 3p20, NONE, NONE),
@@ -572,21 +526,20 @@ t6china_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L7,  0, 1, 0, 1800000, 2950000, NULL,          0,     0),
 	RPM_LDO(L8,  0, 1, 0, 2800000, 2900000, NULL,          0,     0),
 	RPM_LDO(L9,  0, 1, 0, 2800000, 3100000, NULL,          0,     0),
-	RPM_LDO(L10, 0, 1, 0, 3300000, 3300000, NULL,          0,     0),
+	RPM_LDO(L10, 0, 1, 0, 3000000, 3000000, NULL,          0,     0),
 	RPM_LDO(L11, 0, 1, 0, 3300000, 3300000, NULL,          0,     0),
 	RPM_LDO(L12, 0, 1, 0, 1200000, 1200000, "8921_s4",     0,     0),
 	RPM_LDO(L14, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
 	RPM_LDO(L15, 0, 1, 0, 1800000, 3000000, NULL,          0,     0),
-	RPM_LDO(L16, 1, 1, 0, 2850000, 2850000, NULL,          0,     0),
-	RPM_LDO(L17, 1, 1, 0, 2850000, 2850000, NULL,          0,     0),
+	RPM_LDO(L16, 0, 1, 0, 2850000, 2850000, NULL,          0,     0),
+	RPM_LDO(L17, 0, 1, 0, 2850000, 2850000, NULL,          0,     0),
 	RPM_LDO(L18, 0, 1, 0, 1300000, 1300000, "8921_s4",     0,     0),
-	RPM_LDO(L21, 1, 1, 0, 1050000, 1800000, NULL,          0,     0),
+	RPM_LDO(L21, 0, 1, 0, 1050000, 1800000, NULL,          0,     0),
 	RPM_LDO(L22, 0, 1, 0, 3000000, 3000000, NULL,          0,     0),
 	RPM_LDO(L23, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
 	RPM_LDO(L24, 0, 1, 1,  750000, 1150000, "8921_s1", 10000, 10000),
 	RPM_LDO(L25, 1, 1, 0, 1225000, 1225000, "8921_s1", 10000, 10000),
 	RPM_LDO(L27, 0, 0, 0, 1050000, 1050000, "8921_s7",     0,     0),
-	//RPM_LDO(L28, 0, 1, 0, 1050000, 1050000, "8921_s7",     0,     0),
 	RPM_LDO(L29, 0, 1, 0, 2000000, 3300000, NULL,          0,     0),
 
 	/*     ID  a_on pd ss                   supply */
@@ -627,7 +580,6 @@ static struct rpm_regulator_consumer_mapping
 	RPM_REG_MAP(S3,   0, 5, "krait3_dig",   "acpuclk-8064"),
 };
 
-
 int t6china_pm8921_regulator_pdata_len __devinitdata =
 	ARRAY_SIZE(t6china_pm8921_regulator_pdata);
 
@@ -637,6 +589,6 @@ struct rpm_regulator_platform_data t6china_rpm_regulator_pdata __devinitdata = {
 	.version		= RPM_VREG_VERSION_8960,
 	.vreg_id_vdd_mem	= RPM_VREG_ID_PM8921_L24,
 	.vreg_id_vdd_dig	= RPM_VREG_ID_PM8921_S3,
-	.consumer_map		  = msm_rpm_regulator_consumer_mapping,
-	.consumer_map_len = ARRAY_SIZE(msm_rpm_regulator_consumer_mapping),
+	.consumer_map		= msm_rpm_regulator_consumer_mapping,
+	.consumer_map_len	= ARRAY_SIZE(msm_rpm_regulator_consumer_mapping),
 };
