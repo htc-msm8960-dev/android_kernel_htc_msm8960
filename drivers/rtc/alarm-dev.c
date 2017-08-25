@@ -99,6 +99,10 @@ static long alarm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		alarm_enabled &= ~alarm_type_mask;
 		spin_unlock_irqrestore(&alarm_slock, flags);
+		if (alarm_type == ANDROID_ALARM_RTC_POWEROFF_WAKEUP)
+			if (!copy_from_user(&new_alarm_time,
+				(void __user *)arg, sizeof(new_alarm_time)))
+				set_power_on_alarm(new_alarm_time.tv_sec, 0);
 		break;
 
 	case ANDROID_ALARM_SET_OLD:
@@ -132,6 +136,10 @@ from_old_alarm_set:
 			timespec_to_ktime(new_alarm_time),
 			timespec_to_ktime(new_alarm_time));
 		spin_unlock_irqrestore(&alarm_slock, flags);
+		if ((alarm_type == ANDROID_ALARM_RTC_POWEROFF_WAKEUP) &&
+				(ANDROID_ALARM_BASE_CMD(cmd) ==
+				 ANDROID_ALARM_SET(0)))
+			set_power_on_alarm(new_alarm_time.tv_sec, 1);
 		if (ANDROID_ALARM_BASE_CMD(cmd) != ANDROID_ALARM_SET_AND_WAIT(0)
 		    && cmd != ANDROID_ALARM_SET_AND_WAIT_OLD)
 			break;
