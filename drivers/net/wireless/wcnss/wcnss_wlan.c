@@ -39,7 +39,7 @@
 #include <linux/mfd/pm8xxx/misc.h>
 #include <mach/subsystem_notif.h>
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
-#include "wcnss_prealloc.h"
+#include <net/wcnss_prealloc.h>
 #endif
 
 #define DEVICE "wcnss_wlan"
@@ -85,7 +85,6 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define WCNSS_USR_CTRL_MSG_START  0x00000000
 #define WCNSS_USR_SERIAL_NUM      (WCNSS_USR_CTRL_MSG_START + 1)
 #define WCNSS_USR_HAS_CAL_DATA    (WCNSS_USR_CTRL_MSG_START + 2)
-#define WCNSS_USR_WLAN_MAC_ADDR   (WCNSS_USR_CTRL_MSG_START + 3)
 
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 
@@ -502,20 +501,9 @@ static void wcnss_smd_notify_event(void *data, unsigned int event)
 	}
 }
 
-#if defined(CONFIG_PRIMA_WLAN) && !defined(CONFIG_PRIMA_WLAN_MODULE)
-static struct platform_device wcnss_ready = {
-	.name = "wcnss_ready",
-	.id = -1,
-};
-#endif
-
 static void wcnss_post_bootup(struct work_struct *work)
 {
 	pr_info("%s: Cancel APPS vote for Iris & Riva\n", __func__);
-
-#if defined(CONFIG_PRIMA_WLAN) && !defined(CONFIG_PRIMA_WLAN_MODULE)
-	platform_device_register(&wcnss_ready);
-#endif
 
 	/* Since Riva is up, cancel any APPS vote for Iris & Riva VREGs  */
 	wcnss_wlan_power(&penv->pdev->dev, &penv->wlan_config,
@@ -1448,16 +1436,6 @@ void process_usr_ctrl_cmd(u8 *buf, size_t len)
 		has_calibrated_data = buf[2];
 		break;
 
-	case WCNSS_USR_WLAN_MAC_ADDR:
-		memcpy(&penv->wlan_nv_macAddr,  &buf[2],
-				sizeof(penv->wlan_nv_macAddr));
-
-		pr_debug("%s: MAC Addr:" MAC_ADDRESS_STR "\n", __func__,
-			penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
-			penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
-			penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
-		break;
-
 	default:
 		pr_err("%s: Invalid command %d\n", __func__, cmd);
 		break;
@@ -1694,7 +1672,7 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 		return -EFAULT;
 
 	if ((UINT32_MAX - count < penv->user_cal_rcvd) ||
-	     (penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
+	     MAX_CALIBRATED_DATA_SIZE < count + penv->user_cal_rcvd) {
 		pr_err(DEVICE " invalid size to write %d\n", count +
 				penv->user_cal_rcvd);
 		rc = -ENOMEM;
