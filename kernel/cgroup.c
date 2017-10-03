@@ -1642,6 +1642,7 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		cred = override_creds(&init_cred);
 		cgroup_populate_dir(root_cgrp);
 		revert_creds(cred);
+		cgroup_bpf_inherit(root_cgrp);
 		mutex_unlock(&cgroup_root_mutex);
 		mutex_unlock(&cgroup_mutex);
 		mutex_unlock(&inode->i_mutex);
@@ -3955,6 +3956,10 @@ static long cgroup_create(struct cgroup *parent, struct dentry *dentry,
 			ss->post_clone(cgrp);
 	}
 
+	err = cgroup_bpf_inherit(cgrp);
+	if(err)
+		goto err_destroy;
+
 	cgroup_lock_hierarchy(root);
 	list_add(&cgrp->sibling, &cgrp->parent->children);
 	cgroup_unlock_hierarchy(root);
@@ -3971,9 +3976,6 @@ static long cgroup_create(struct cgroup *parent, struct dentry *dentry,
 
 	err = cgroup_populate_dir(cgrp);
 	/* If err < 0, we have a half-filled directory - oh well ;) */
-
-	if(parent)
-		cgroup_bpf_inherit(cgrp, parent);
 
 	mutex_unlock(&cgroup_mutex);
 	mutex_unlock(&cgrp->dentry->d_inode->i_mutex);
@@ -5271,15 +5273,25 @@ void cgroup_sk_free(struct cgroup *skcg)
 }
 
 #ifdef CONFIG_CGROUP_BPF
-void cgroup_bpf_update(struct cgroup *cgrp,
-                      struct bpf_prog *prog,
-                      enum bpf_attach_type type)
+int cgroup_bpf_attach(struct cgroup *cgrp, struct bpf_prog *prog,
+		      enum bpf_attach_type type, u32 flags)
 {
-       struct cgroup *parent = cgroup_parent(cgrp);
+	int ret;
 
-       mutex_lock(&cgroup_mutex);
-       __cgroup_bpf_update(cgrp, parent, prog, type);
-       mutex_unlock(&cgroup_mutex);
+	mutex_lock(&cgroup_mutex);
+	ret = __cgroup_bpf_attach(cgrp, prog, type, flags);
+	mutex_unlock(&cgroup_mutex);
+	return ret;
+}
+int cgroup_bpf_detach(struct cgroup *cgrp, struct bpf_prog *prog,
+		      enum bpf_attach_type type, u32 flags)
+{
+	int ret;
+
+	mutex_lock(&cgroup_mutex);
+	ret = __cgroup_bpf_detach(cgrp, prog, type, flags);
+	mutex_unlock(&cgroup_mutex);
+	return ret;
 }
 #endif /* CONFIG_CGROUP_BPF */
 
