@@ -16,7 +16,10 @@
 
 #include <linux/module.h>
 #include <linux/delay.h>
-#include <linux/earlysuspend.h>
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 #include <linux/hrtimer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -66,7 +69,10 @@ struct synaptics_ts_data {
 	uint16_t finger_pressed;
 	int (*power)(int on);
 	int (*lpm_power)(int on);
-	struct early_suspend early_suspend;
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
+	bool fb_suspended;
+#endif
 	int pre_finger_data[11][4];
 	uint32_t debug_log_level;
 	uint32_t enable_noise_log;
@@ -134,9 +140,11 @@ struct synaptics_ts_data {
 	atomic_t keypad_enable;
 };
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void synaptics_ts_early_suspend(struct early_suspend *h);
-static void synaptics_ts_late_resume(struct early_suspend *h);
+#ifdef CONFIG_FB
+static void synaptics_ts_fb_suspend(struct synaptics_ts_data *ts);
+static void synaptics_ts_fb_resume(struct synaptics_ts_data *ts);
+static int fb_notifier_callback(struct notifier_block *self,
+                                unsigned long event, void *data);
 #endif
 
 static DECLARE_WAIT_QUEUE_HEAD(syn_data_ready_wq);
@@ -3237,11 +3245,10 @@ static int syn_probe_init(void *arg)
 		hrtimer_start(&ts->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
 	}
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING - 1;
-	ts->early_suspend.suspend = synaptics_ts_early_suspend;
-	ts->early_suspend.resume = synaptics_ts_late_resume;
-	register_early_suspend(&ts->early_suspend);
+#ifdef CONFIG_FB
+	ts->fb_suspended = false;
+	ts->fb_notif.notifier_call = fb_notifier_callback;
+	fb_register_client(&ts->fb_notif);
 #endif
 
 #ifdef SYN_CABLE_CONTROL
@@ -3364,7 +3371,7 @@ err_check_functionality_failed:
 static int synaptics_ts_remove(struct i2c_client *client)
 {
 	struct synaptics_ts_data *ts = i2c_get_clientdata(client);
-	unregister_early_suspend(&ts->early_suspend);
+	fb_unregister_client(&ts->fb_notif);
 	if (ts->use_irq)
 		free_irq(client->irq, ts);
 	else {
@@ -3623,19 +3630,51 @@ static int synaptics_ts_resume(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void synaptics_ts_early_suspend(struct early_suspend *h)
+#ifdef CONFIG_FB
+static void synaptics_ts_fb_suspend(struct synaptics_ts_data *ts)
 {
-	struct synaptics_ts_data *ts;
-	ts = container_of(h, struct synaptics_ts_data, early_suspend);
+	if (ts->fb_suspended)
+		return;
+
 	synaptics_ts_suspend(ts->client, PMSG_SUSPEND);
+	ts->fb_suspended = true;
 }
 
-static void synaptics_ts_late_resume(struct early_suspend *h)
+static void synaptics_ts_fb_resume(struct synaptics_ts_data *ts)
 {
-	struct synaptics_ts_data *ts;
-	ts = container_of(h, struct synaptics_ts_data, early_suspend);
+        if (!ts->fb_suspended)
+                return;
+
 	synaptics_ts_resume(ts->client);
+        ts->fb_suspended = false;
+}
+
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct synaptics_ts_data *ts = container_of(self, struct synaptics_ts_data, fb_notif);
+
+	if (evdata && evdata->data && ts) {
+		if (event == FB_EVENT_BLANK) {
+			blank = evdata->data;
+			switch (*blank) {
+				case FB_BLANK_UNBLANK:
+				case FB_BLANK_NORMAL:
+				case FB_BLANK_VSYNC_SUSPEND:
+				case FB_BLANK_HSYNC_SUSPEND:
+					synaptics_ts_fb_resume(ts);
+					break;
+				default:
+				case FB_BLANK_POWERDOWN:
+					synaptics_ts_fb_suspend(ts);
+					break;
+			}
+		}
+	}
+
+	return 0;
 }
 #endif
 
@@ -3647,7 +3686,7 @@ static const struct i2c_device_id synaptics_ts_id[] = {
 static struct i2c_driver synaptics_ts_driver = {
 	.probe		= synaptics_ts_probe,
 	.remove		= synaptics_ts_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_FB
 	.suspend	= synaptics_ts_suspend,
 	.resume		= synaptics_ts_resume,
 #endif
