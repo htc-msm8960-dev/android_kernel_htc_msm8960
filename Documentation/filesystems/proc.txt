@@ -757,7 +757,7 @@ VmallocChunk:   111088 kB
     MemTotal: Total usable ram (i.e. physical ram minus a few reserved
               bits and the kernel binary code)
      MemFree: The sum of LowFree+HighFree
-MemAvailable: An estimate of how much memory is available for starting new
+	MemAvailable: An estimate of how much memory is available for starting new
               applications, without swapping. Calculated from MemFree,
               SReclaimable, the size of the file LRU lists, and the low
               watermarks in each zone.
