@@ -61,6 +61,7 @@ struct loop_device {
 	struct mutex		lo_ctl_mutex;
 	struct task_struct	*lo_thread;
 	wait_queue_head_t	lo_event;
+	bool			sysfs_inited;
 
 	struct request_queue	*lo_queue;
 	struct gendisk		*lo_disk;
