@@ -249,9 +249,10 @@ print_tainted()
 extern wl_iw_extra_params_t  g_wl_iw_params;
 #endif 
 
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#endif 
+#if defined(CONFIG_FB) && defined(DHD_USE_EARLYSUSPEND)
+#include <linux/fb.h>
+#include <linux/notifier.h>
+#endif /* defined(CONFIG_FB) && defined(DHD_USE_EARLYSUSPEND) */
 
 extern int dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd);
 
@@ -397,9 +398,10 @@ typedef struct dhd_info {
 	atomic_t pend_8021x_cnt;
 	dhd_attach_states_t dhd_state;
 
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
-	struct early_suspend early_suspend;
-#endif 
+#if defined(CONFIG_FB) && defined(DHD_USE_EARLYSUSPEND)
+	struct notifier_block fb_notif;
+	bool fb_suspended;
+#endif /* CONFIG_FB && DHD_USE_EARLYSUSPEND */
 
 #ifdef ARP_OFFLOAD_SUPPORT
 	u32 pend_ipaddr;
@@ -811,9 +813,12 @@ static int dhd_suspend_resume_helper(struct dhd_info *dhd, int val, int force)
 	return ret;
 }
 
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
-static void dhd_early_suspend(struct early_suspend *h)
+#if defined(CONFIG_FB) && defined(DHD_USE_EARLYSUSPEND)
+static void dhd_fb_suspend(struct dhd_info *dhd)
 {
+	if (dhd->fb_suspended)
+		return;
+
 	struct dhd_info *dhd = container_of(h, struct dhd_info, early_suspend);
 	DHD_ERROR(("%s: enter and skip it\n", __FUNCTION__));
 
@@ -823,10 +828,14 @@ static void dhd_early_suspend(struct early_suspend *h)
 #endif
 	if (dhd)
 		dhd_suspend_resume_helper(dhd, 1, 0);
+	dhd->fb_suspended = true;
 }
 
-static void dhd_late_resume(struct early_suspend *h)
+static void dhd_fb_resume(struct dhd_info *dhd)
 {
+	if (!dhd->fb_suspended)
+		return;
+
 	struct dhd_info *dhd = container_of(h, struct dhd_info, early_suspend);
 	DHD_ERROR(("%s: enter\n", __FUNCTION__));
 
@@ -837,8 +846,35 @@ static void dhd_late_resume(struct early_suspend *h)
 
 	if (dhd)
 		dhd_suspend_resume_helper(dhd, 0, 0);
+	dhd->fb_suspended = false;
 }
-#endif 
+
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct dhd_info *info = container_of(self, struct dhd_info, fb_notif);
+	if (evdata && evdata->data && info) {
+		if (event == FB_EVENT_BLANK) {
+			blank = evdata->data;
+			switch (*blank) {
+				case FB_BLANK_UNBLANK:
+				case FB_BLANK_NORMAL:
+				case FB_BLANK_VSYNC_SUSPEND:
+				case FB_BLANK_HSYNC_SUSPEND:
+					dhd_fb_resume(info);
+					break;
+				default:
+				case FB_BLANK_POWERDOWN:
+					dhd_fb_suspend(info);
+					break;
+			}
+		}
+	}
+	return 0;
+}
+#endif /* CONFIG_FB && DHD_USE_EARLYSUSPEND */
 
 
 void
@@ -3649,13 +3685,12 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	register_pm_notifier(&dhd_sleep_pm_notifier);
 #endif 
 
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
-	dhd->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 20;
-	dhd->early_suspend.suspend = dhd_early_suspend;
-	dhd->early_suspend.resume = dhd_late_resume;
-	register_early_suspend(&dhd->early_suspend);
+#if defined(CONFIG_FB) && defined(DHD_USE_EARLYSUSPEND)
+	dhd->fb_suspended = false;
+	dhd->fb_notif.notifier_call = fb_notifier_callback;
+	fb_register_client(&dhd->fb_notif);
 	dhd_state |= DHD_ATTACH_STATE_EARLYSUSPEND_DONE;
-#endif 
+#endif /* CONFIG_FB && DHD_USE_EARLYSUSPEND */
 
 #ifdef ARP_OFFLOAD_SUPPORT
 	dhd->pend_ipaddr = 0;
@@ -5059,12 +5094,12 @@ void dhd_detach(dhd_pub_t *dhdp)
 		if (dhdp->prot)
 			dhd_prot_detach(dhdp);
 	}
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
+#if defined(CONFIG_FB) && defined(DHD_USE_EARLYSUSPEND)
 	if (dhd->dhd_state & DHD_ATTACH_STATE_EARLYSUSPEND_DONE) {
 		if (dhd->early_suspend.suspend)
-			unregister_early_suspend(&dhd->early_suspend);
+			fb_unregister_client(&dhd->fb_notif);
 	}
-#endif 
+#endif /* CONFIG_FB && DHD_USE_EARLYSUSPEND */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	cancel_work_sync(&dhd->work_hang);
