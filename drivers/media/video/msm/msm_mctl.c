@@ -1315,6 +1315,11 @@ static int msm_mctl_v4l2_querycap(struct file *f, void *pctx,
 		return -EINVAL;
 	}
 
+    if (!pcaps) {
+        pr_err("%s :: NULL file pointer", __func__);
+        return -EINVAL;
+    }
+
 	pcam = video_drvdata(f);
 
 	D("%s\n", __func__);
