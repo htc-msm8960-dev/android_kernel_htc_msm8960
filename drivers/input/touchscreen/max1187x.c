@@ -18,7 +18,10 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/delay.h>
-#include <linux/earlysuspend.h>
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/input/mt.h>
@@ -132,8 +135,10 @@ struct data {
 	struct max1187x_board_config  *fw_config;
 	struct i2c_client *client;
 	struct input_dev *input_dev;
-	struct early_suspend early_suspend;
-	u8 early_suspend_registered;
+#ifdef CONFIG_FB
+    struct notifier_block fb_notif;
+    bool fb_suspended;
+#endif
 	atomic_t scheduled_work_irq;
 	u32 irq_receive_time;
 	struct mutex irq_mutex;
@@ -192,8 +197,11 @@ struct data {
 	u16 cycles:1;
 };
 
-static void early_suspend(struct early_suspend *h);
-static void late_resume(struct early_suspend *h);
+#ifdef CONFIG_FB
+static void max1187x_ts_fb_suspend(struct data *ts);
+static void max1187x_ts_fb_resume(struct data *ts);
+static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data);
+#endif
 
 static int device_init(struct i2c_client *client);
 static int device_deinit(struct i2c_client *client);
@@ -2874,11 +2882,11 @@ static int device_init(struct i2c_client *client)
 	}
 
 	
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING - 1;
-	ts->early_suspend.suspend = early_suspend;
-	ts->early_suspend.resume = late_resume;
-	register_early_suspend(&ts->early_suspend);
-	ts->early_suspend_registered = 1;
+#ifdef CONFIG_FB
+    ts->fb_suspended = false;
+    ts->fb_notif.notifier_call = fb_notifier_callback;
+    fb_register_client(&ts->fb_notif);
+#endif
 	pr_info_if(8, "(INIT): suspend/resume registration OK");
 
 	gl_ts = ts;
@@ -2962,8 +2970,7 @@ static int device_deinit(struct i2c_client *client)
 	if (ts->sysfs_created && ts->sysfs_created--)
 		device_remove_bin_file(&client->dev, &dev_attr_report);
 
-	if (ts->early_suspend_registered)
-		unregister_early_suspend(&ts->early_suspend);
+	fb_unregister_client(&ts->fb_notif);
 	if (ts->input_dev)
 		input_unregister_device(ts->input_dev);
 
@@ -3237,30 +3244,62 @@ static void release_report(struct data *ts)
 	mutex_unlock(&ts->report_mutex);
 }
 
-static void early_suspend(struct early_suspend *h)
+#ifdef CONFIG_FB
+static void max1187x_ts_fb_suspend(struct data *ts)
 {
 	u16 data[] = {0x0020, 0x0001, 0x0000};
-	struct data *ts;
-	ts = container_of(h, struct data, early_suspend);
+    if (ts->fb_suspended)
+    return;
 
 	pr_info("max1187x_%s", __func__);
 	DISABLE_IRQ();
 	(void)send_mtp_command(ts, data, NWORDS(data));
 	ENABLE_IRQ();
+    ts->fb_suspended = true;
 }
 
-static void late_resume(struct early_suspend *h)
+static void max1187x_ts_fb_resume(struct data *ts)
 {
 	u16 data[] = {0x0020, 0x0001, 0x0002};
-	struct data *ts;
-	ts = container_of(h, struct data, early_suspend);
+    if (!ts->fb_suspended)
+    return;
 
 	pr_info("max1187x_%s", __func__);
 	
 	(void)send_mtp_command(ts, data, NWORDS(data));
 
 	(void)change_touch_rpt(ts->client, PDATA(report_mode));
+    ts->fb_suspended = false;
 }
+
+static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+{
+    struct fb_event *evdata = data;
+    int *blank;
+    struct data *ts = container_of(self, struct data, fb_notif);
+    
+    if (evdata && evdata->data && ts) {
+        if (event == FB_EVENT_BLANK) {
+            blank = evdata->data;
+            switch (*blank) {
+                case FB_BLANK_UNBLANK:
+                case FB_BLANK_NORMAL:
+                case FB_BLANK_VSYNC_SUSPEND:
+                case FB_BLANK_HSYNC_SUSPEND:
+                max1187x_ts_fb_resume(ts);
+                break;
+                default:
+                case FB_BLANK_POWERDOWN:
+                max1187x_ts_fb_suspend(ts);
+                break;
+            }
+        }
+    }
+    
+    return 0;
+}
+#endif
+
 #define STATUS_ADDR_H 0x00
 #define STATUS_ADDR_L 0xFF
 #define DATA_ADDR_H   0x00
