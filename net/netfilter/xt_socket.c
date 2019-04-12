@@ -273,12 +273,12 @@ extract_icmp6_fields(const struct sk_buff *skb,
 struct sock*
 xt_socket_get6_sk(const struct sk_buff *skb, struct xt_action_param *par)
 {
-       struct ipv6hdr ipv6_var, *iph = ipv6_hdr(skb);
-       struct udphdr _hdr, *hp = NULL;
-       struct sock *sk;
-       const struct in6_addr *daddr = NULL, *saddr = NULL;
-       __be16 dport = 0, sport = 0;
-       int thoff, tproto;
+	struct ipv6hdr ipv6_var, *iph = ipv6_hdr(skb);
+	struct udphdr _hdr, *hp = NULL;
+	struct sock *sk;
+	struct in6_addr *daddr, *saddr;
+	__be16 dport, sport;
+	int thoff = 0, tproto;
 
 	tproto = ipv6_find_hdr(skb, &thoff, -1, NULL, NULL);
 	if (tproto < 0) {
