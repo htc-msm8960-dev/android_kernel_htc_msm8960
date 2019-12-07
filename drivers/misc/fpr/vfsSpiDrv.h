@@ -21,7 +21,10 @@
 #include <linux/errno.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
-#include <linux/earlysuspend.h>
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -187,6 +190,10 @@ typedef struct vfsspi_iocFreqTable {
 struct vfsspi_devData {
 	dev_t devt;
 	spinlock_t vfsSpiLock;
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
+	bool fb_suspended;
+#endif
 	struct spi_device *spi;
 	struct list_head deviceEntry;
 	struct mutex bufferMutex;
