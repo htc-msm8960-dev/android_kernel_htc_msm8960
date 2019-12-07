@@ -119,7 +119,6 @@ static LIST_HEAD(deviceList);
 static DEFINE_MUTEX(deviceListMutex);
 char firmware_syn[30];
 static int dataToRead;
-static int suspend = 0;
 static int hasfp = 0;
 
 static int __init fingerprint_mount(char *str)
