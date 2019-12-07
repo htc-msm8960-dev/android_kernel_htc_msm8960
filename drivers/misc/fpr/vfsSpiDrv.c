@@ -108,10 +108,7 @@ static const struct file_operations vfsspi_fops = {
 
 struct spi_device *gDevSpi;
 struct class *vfsSpiDevClass;
-#ifdef CONFIG_HAS_EARLYSUSPEND
 struct vfsspi_devData *vfsSpiDevTmp = NULL;
-struct early_suspend early_suspend;
-#endif
 int gpio_irq;
 
 static DECLARE_WAIT_QUEUE_HEAD(wq);
@@ -298,14 +295,16 @@ int vfsspi_sendDrdySignal(struct vfsspi_devData *vfsSpiDev)
 	return ret;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-void vfsspi_early_suspend(struct early_suspend *h)
+#ifdef CONFIG_FB
+static void vfsspi_fb_suspend(struct vfsspi_devData *data)
 {
 	struct task_struct *t;
 	int ret = 0;
+
+	if (data->fb_suspended)
+	return;
 
 	printk("[fp]vfsspi_early_suspend\n");
-	suspend = 1;
 	if ( vfsSpiDevTmp != NULL ) {
 		if (vfsSpiDevTmp->eUserPID != 0) {
 			rcu_read_lock();
@@ -329,15 +328,18 @@ void vfsspi_early_suspend(struct early_suspend *h)
 				printk("[fp]pid not received yet\n");
 		}
 	}
+	data->fb_suspended = false;
 }
 
-void vfsspi_late_resume(struct early_suspend *h)
+void vfsspi_fb_resume(struct vfsspi_devData *data)
 {
 	struct task_struct *t;
 	int ret = 0;
 
+	if (!data->fb_suspended)
+	return;
+
 	printk("[fp]vfsspi_late_resume\n");
-	suspend = 0;
 	if ( vfsSpiDevTmp != NULL ) {
 		if (vfsSpiDevTmp->eUserPID != 0) {
 			rcu_read_lock();
@@ -361,6 +363,34 @@ void vfsspi_late_resume(struct early_suspend *h)
 				printk("[fp]pid not received yet\n");
 		}
 	}
+	data->fb_suspended = false;
+}
+
+static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+{
+    struct fb_event *evdata = data;
+    int *blank;
+    struct vfsspi_devData *vfsdata = vfsSpiDevTmp;
+    
+    if (evdata && evdata->data && vfsdata) {
+        if (event == FB_EVENT_BLANK) {
+            blank = evdata->data;
+            switch (*blank) {
+                case FB_BLANK_UNBLANK:
+                case FB_BLANK_NORMAL:
+                case FB_BLANK_VSYNC_SUSPEND:
+                case FB_BLANK_HSYNC_SUSPEND:
+                vfsspi_fb_resume(vfsdata);
+                break;
+                default:
+                case FB_BLANK_POWERDOWN:
+                vfsspi_fb_suspend(vfsdata);
+                break;
+            }
+        }
+    }
+    
+    return 0;
 }
 #endif
 
@@ -555,9 +585,7 @@ long vfsspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return -ENOTTY;
 	}
 	vfsSpiDev = filp->private_data;
-#ifdef CONFIG_HAS_EARLYSUSPEND
 	vfsSpiDevTmp = vfsSpiDev;
-#endif
 	mutex_lock(&vfsSpiDev->bufferMutex);
 	switch (cmd) {
 	case VFSSPI_IOCTL_DEVICE_SUSPEND:
@@ -705,7 +733,7 @@ long vfsspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#ifdef CONFIG_FB
 	case VFSSPI_IOCTL_REGISTER_SUSPENDRESUME_SIGNAL:
 	{
 		struct vfsspi_iocRegSignal usrSignal;
@@ -724,7 +752,7 @@ long vfsspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		if(arg != 0){
 			printk("[fp]VFSSPI_IOCTL_GET_SYSTEM_STATUS\n");
-			if (copy_to_user((void *)arg, &suspend,sizeof(suspend)) != 0) {
+			if (copy_to_user((void *)arg, &vfsSpiDevTmp->fb_suspended,sizeof(&vfsSpiDevTmp->fb_suspended)) != 0) {
 				printk("[fp]copy to userfailed\n");
 				retVal = -EFAULT;
 			}
@@ -1231,6 +1259,14 @@ int vfsspi_probe(struct spi_device *spi)
 		register_early_suspend(&early_suspend);
 	}
 #endif
+#ifdef CONFIG_FB
+	if (status == 0) {
+		vfsSpiDev->fb_suspended = false;
+		vfsSpiDev->fb_notif.notifier_call = fb_notifier_callback;
+		printk("[fp]vfsspi_probe: registering fb notifier\n");
+		fb_register_client(&vfsSpiDev->fb_notif);
+	}
+#endif
 	printk("[fp]vfsspi_probe ----\n");
 	return status;
 }
@@ -1260,6 +1296,9 @@ int vfsspi_remove(struct spi_device *spi)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	printk("[fp]vfsspi_remove: unregistering early suspend\n");
 	unregister_early_suspend(&early_suspend);
+#endif
+#ifdef CONFIG_FB
+	fb_unregister_client(&vfsSpiDev->fb_notif);
 #endif
 	printk("[fp]vfsspi_remove ----\n");
 	return status;
