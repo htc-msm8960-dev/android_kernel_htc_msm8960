@@ -328,7 +328,7 @@ static void vfsspi_fb_suspend(struct vfsspi_devData *data)
 				printk("[fp]pid not received yet\n");
 		}
 	}
-	data->fb_suspended = false;
+	data->fb_suspended = true;
 }
 
 void vfsspi_fb_resume(struct vfsspi_devData *data)
