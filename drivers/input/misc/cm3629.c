@@ -14,8 +14,9 @@
  */
 
 #include <linux/delay.h>
-#ifdef CONFIG_EARLYSUSPEND
-#include <linux/earlysuspend.h>
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#include <linux/fb.h>
 #endif
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -98,8 +99,9 @@ struct cm3629_info {
 	struct device *ps_dev;
 	struct input_dev *ls_input_dev;
 	struct input_dev *ps_input_dev;
-#ifdef CONFIG_EARLYSUSPEND
-	struct early_suspend early_suspend;
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
+	bool fb_suspended;
 #endif
 	struct i2c_client *i2c_client;
 	struct workqueue_struct *lp_wq;
@@ -2566,24 +2568,61 @@ fail_free_intr_pin:
 	return ret;
 }
 
-#ifdef CONFIG_EARLYSUSPEND
-static void cm3629_early_suspend(struct early_suspend *h)
+#ifdef CONFIG_FB
+static void cm3629_fb_suspend(struct cm3629_info *data)
 {
-	struct cm3629_info *lpi = lp_info;
+	//struct cm3629_info *lpi = lp_info;
+
+	if (data->fb_suspended)
+	return;
 
 	D("[LS][cm3629] %s\n", __func__);
 
-	if (lpi->ps_enable == 0)
+	if (data->ps_enable == 0)
 		sensor_lpm_power(1);
 	else
 		D("[PS][cm3629] %s: Psensor enable, so did not enter lpm\n", __func__);
+
+	data->fb_suspended = true;
 }
 
-static void cm3629_late_resume(struct early_suspend *h)
+static void cm3629_fb_resume(struct cm3629_info *data)
 {
 	sensor_lpm_power(0);
+
+	if (!data->fb_suspended)
+	return;
+
 	D("[LS][cm3629] %s\n", __func__);
 
+	data->fb_suspended = false;
+}
+
+static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+{
+    struct fb_event *evdata = data;
+    int *blank;
+    struct cm3629_info *cm3629_data = lp_info;
+
+    if (evdata && evdata->data && cm3629_data) {
+        if (event == FB_EVENT_BLANK) {
+            blank = evdata->data;
+            switch (*blank) {
+                case FB_BLANK_UNBLANK:
+                case FB_BLANK_NORMAL:
+                case FB_BLANK_VSYNC_SUSPEND:
+                case FB_BLANK_HSYNC_SUSPEND:
+                cm3629_fb_resume(cm3629_data);
+                break;
+                default:
+                case FB_BLANK_POWERDOWN:
+                cm3629_fb_suspend(cm3629_data);
+                break;
+            }
+        }
+    }
+
+    return 0;
 }
 #endif
 #if 0
@@ -2818,14 +2857,11 @@ static int cm3629_probe(struct i2c_client *client,
 	if (ret)
 		goto err_create_ps_device;
 
-#ifdef CONFIG_EARLYSUSPEND
-	lpi->early_suspend.level =
-			EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	lpi->early_suspend.suspend = cm3629_early_suspend;
-	lpi->early_suspend.resume = cm3629_late_resume;
-	register_early_suspend(&lpi->early_suspend);
+#ifdef CONFIG_FB
+	lpi->fb_suspended = false;
+	lpi->fb_notif.notifier_call = fb_notifier_callback;
+	fb_register_client(&lpi->fb_notif);
 #endif
-
 	sensor_lpm_power(0);
 	D("[PS][cm3629] %s: Probe success!\n", __func__);
 	is_probe_success = 1;
