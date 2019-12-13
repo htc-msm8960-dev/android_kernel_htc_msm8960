@@ -195,6 +195,7 @@ struct data {
 	u16 button2:1;
 	u16 button3:1;
 	u16 cycles:1;
+	atomic_t keypad_enable;
 };
 
 #ifdef CONFIG_FB
@@ -205,6 +206,8 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 
 static int device_init(struct i2c_client *client);
 static int device_deinit(struct i2c_client *client);
+
+static struct data *gl_ts;
 
 static int bootloader_enter(struct data *ts);
 static int bootloader_exit(struct data *ts);
@@ -676,6 +679,10 @@ static void button_report(struct data *ts, int index, int state)
 {
 	if (!ts->button_data)
 		return;
+
+	if (!atomic_read(&ts->keypad_enable)) {
+		return;
+	}
 
 	if (state) {
 		switch (PDATA(input_protocol)) {
@@ -1753,6 +1760,43 @@ static ssize_t unlock_store(struct device *dev,
 	return count;
 }
 
+static ssize_t keypad_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct data *ts = gl_ts;
+
+	return sprintf(buf, "%d\n", atomic_read(&ts->keypad_enable));
+}
+
+static ssize_t keypad_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct data *ts = gl_ts;
+
+	unsigned int val = 0;
+	sscanf(buf, "%d", &val);
+	val = (val == 0 ? 0 : 1);
+	atomic_set(&ts->keypad_enable, val);
+	if (val) {
+		if (PDATA(button_code0) != KEY_RESERVED)
+			set_bit(ts->pdata->button_code0, ts->input_dev->keybit);
+		if (PDATA(button_code1) != KEY_RESERVED)
+			set_bit(ts->pdata->button_code1, ts->input_dev->keybit);
+		if (PDATA(button_code2) != KEY_RESERVED)
+			set_bit(ts->pdata->button_code2, ts->input_dev->keybit);
+		if (PDATA(button_code3) != KEY_RESERVED)
+			set_bit(ts->pdata->button_code3, ts->input_dev->keybit);
+	} else {
+		clear_bit(ts->pdata->button_code0, ts->input_dev->keybit);
+		clear_bit(ts->pdata->button_code1, ts->input_dev->keybit);
+		clear_bit(ts->pdata->button_code2, ts->input_dev->keybit);
+		clear_bit(ts->pdata->button_code3, ts->input_dev->keybit);
+	}
+	input_sync(ts->input_dev);
+
+	return count;
+}
+
 static DEVICE_ATTR(init, (S_IWUSR|S_IRUGO), init_show, init_store);
 static DEVICE_ATTR(hreset, S_IWUSR, NULL, hreset_store);
 static DEVICE_ATTR(sreset, S_IWUSR, NULL, sreset_store);
@@ -1763,6 +1807,7 @@ static DEVICE_ATTR(fw_ver, S_IRUGO, fw_ver_show, NULL);
 static DEVICE_ATTR(driver_ver, S_IRUGO, driver_ver_show, NULL);
 static DEVICE_ATTR(debug, (S_IWUSR|S_IRUGO), debug_show, debug_store);
 static DEVICE_ATTR(command, S_IWUSR, NULL, command_store);
+static DEVICE_ATTR(keypad_enable, S_IRUGO|S_IWUSR, keypad_enable_show, keypad_enable_store);
 static struct bin_attribute dev_attr_report = {
 		.attr = {.name = "report", .mode = S_IRUGO}, .read = report_read };
 
@@ -2797,6 +2842,7 @@ static int device_init(struct i2c_client *client)
 	}
 	pr_info_if(8, "(INIT): chip init OK");
 
+	gl_ts = ts;
 	
 	if (request_threaded_irq(client->irq, NULL, irq_handler,
 		IRQF_TRIGGER_FALLING | IRQF_ONESHOT, client->name, ts) != 0) {
@@ -2864,6 +2910,8 @@ static int device_init(struct i2c_client *client)
 	if (PDATA(button_code3) != KEY_RESERVED)
 		set_bit(pdata->button_code3, ts->input_dev->keybit);
 
+	atomic_set(&ts->keypad_enable, 1);
+
 	if (input_register_device(ts->input_dev)) {
 		pr_err("Failed to register touch input device");
 		ret = -EPERM;
@@ -2915,6 +2963,11 @@ static int device_init(struct i2c_client *client)
 		pr_err("failed to create sysfs file [unlock]");
 		return 0;
 	}
+	if (sysfs_create_file(android_touch_kobj, &dev_attr_keypad_enable.attr) < 0) {
+		pr_err("failed to create sysfs file [keypad_enable]");
+		return 0;
+	}
+
 	while (*dev_attr) {
 		if (device_create_file(&client->dev, *dev_attr) < 0) {
 			pr_err("failed to create sysfs file");
@@ -2962,6 +3015,7 @@ static int device_deinit(struct i2c_client *client)
 	sysfs_remove_file(android_touch_kobj, &dev_attr_gpio.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_diag.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_unlock.attr);
+	sysfs_remove_file(android_touch_kobj, &dev_attr_keypad_enable.attr);
 	while (*dev_attr) {
 		if (ts->sysfs_created && ts->sysfs_created--)
 			device_remove_file(&client->dev, *dev_attr);
