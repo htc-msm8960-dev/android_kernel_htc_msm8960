@@ -8251,10 +8251,26 @@ err:
 }
 
 #if defined(BCM4335_CHIP)
+#if defined(CONFIG_BCMDHD_FW_PATH)
+#define BCM4335B0_STA_FW_PATH CONFIG_BCMDHD_FW_PATH
+#else
 #define BCM4335B0_STA_FW_PATH "/system/etc/firmware/fw_bcm4335_b0.bin"
+#endif
+#if defined(CONFIG_BCMDHD_AP_FW_PATH)
+#define BCM4335B0_APSTA_FW_PATH CONFIG_BCMDHD_AP_FW_PATH
+#else
 #define BCM4335B0_APSTA_FW_PATH "/system/etc/firmware/fw_bcm4335_apsta_b0.bin"
+#endif
+#if defined(CONFIG_BCMDHD_P2P_FW_PATH)
+#define BCM4335B0_P2P_FW_PATH CONFIG_BCMDHD_P2P_FW_PATH
+#else
 #define BCM4335B0_P2P_FW_PATH "/system/etc/firmware/fw_bcm4335_p2p_b0.bin"
+#endif
+#if defined(CONFIG_BCMDHD_MFG_FW_PATH)
+#define BCM4335B0_MFG_FW_PATH CONFIG_BCMDHD_MFG_FW_PATH
+#else
 #define BCM4335B0_MFG_FW_PATH "/system/etc/firmware/bcm_mfg_b0.bin"
+#endif
 #endif
 static int
 _dhdsdio_download_firmware(struct dhd_bus *bus)
