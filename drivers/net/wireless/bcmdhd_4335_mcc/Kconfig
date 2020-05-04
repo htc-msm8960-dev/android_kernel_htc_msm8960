@@ -19,6 +19,27 @@ config BCMDHD_FW_PATH
 	---help---
 	  Path to the firmware file.
 
+config BCMDHD_AP_FW_PATH
+	depends on BCMDHD_4335_MCC
+	string "Firmware path"
+	default "/system/etc/firmware/fw_bcm4335_apsta_b0.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCMDHD_P2P_FW_PATH
+	depends on BCMDHD_4335_MCC
+	string "Firmware path"
+	default "/system/etc/firmware/fw_bcm4335_p2p_b0.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCMDHD_MFG_FW_PATH
+	depends on BCMDHD_4335_MCC
+	string "Firmware path"
+	default "/system/etc/firmware/bcm_mfg_b0.bin"
+	---help---
+	  Path to the firmware file.
+
 config BCMDHD_NVRAM_PATH
 	depends on BCMDHD_4335_MCC
 	string "NVRAM path"
