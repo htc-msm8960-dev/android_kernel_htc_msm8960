@@ -96,7 +96,13 @@ int dhd_keep_alive_onoff(dhd_pub_t *dhd);
 
 #define WIFI_DEFAULT 1
 #define WIFI_EMEA 2
+
+#if defined(CONFIG_BCMDHD_NVRAM_EMEA_PATH)
+char nvram_EMEA_path[MOD_PARAM_PATHLEN] = CONFIG_BCMDHD_NVRAM_EMEA_PATH;
+#else
 char nvram_EMEA_path[MOD_PARAM_PATHLEN] = "/etc/calibration_EMEA";
+#endif
+
 extern int get_wifi_setting(void);
 #ifdef SOFTAP
 extern struct net_device *ap_net_dev;
