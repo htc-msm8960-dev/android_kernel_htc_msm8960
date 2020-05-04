@@ -47,6 +47,13 @@ config BCMDHD_NVRAM_PATH
 	---help---
 	  Path to the calibration file.
 
+config BCMDHD_NVRAM_EMEA_PATH
+	depends on BCMDHD_4335_MCC
+	string "NVRAM path"
+	default "/etc/calibration_EMEA"
+	---help---
+	  Path to the calibration file.
+
 config BCMDHD_WEXT
 	bool "Enable WEXT support"
 	depends on BCMDHD_4335_MCC && CFG80211 = n
