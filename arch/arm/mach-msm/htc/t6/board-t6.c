@@ -1382,7 +1382,6 @@ struct max1187x_pdata max1187x_platdata = {
 	.button_code2 = KEY_RESERVED,
 	.button_code3 = KEY_RESERVED,
 	.report_mode = MAX1187X_REPORT_MODE_EXTEND,
-	.enable_touch_wakeup = 0,
 	.button_data = t6_vk_data,
 };
 

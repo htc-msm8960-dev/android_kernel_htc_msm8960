@@ -33,7 +33,6 @@
 #define MAX1187X_TOUCH_REPORT_RAW       0x0800
 #define MAX1187X_TOUCH_REPORT_BASIC     0x0801
 #define MAX1187X_TOUCH_REPORT_EXTENDED  0x0802
-#define MAX1187X_REPORT_POWER_MODE		0x0121
 #define MAX_REPORT_READERS		5
 #define DEBUG_STRING_LEN_MAX 60
 #define MAX_FW_RETRIES 5
@@ -170,7 +169,6 @@ struct max1187x_pdata {
 	#define MAX1187X_REPORT_MODE_BASIC	1
 	#define MAX1187X_REPORT_MODE_EXTEND	2
 	u8			report_mode;
-	u32			enable_touch_wakeup;
 	struct max1187x_virtual_key *button_data;
 };
 
