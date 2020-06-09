@@ -802,22 +802,6 @@ static void process_touch_report(struct data *ts, u16 *buf)
 	if (BYTEH(header->header) != 0x11)
 		goto err_process_touch_report_header;
 
-	if (PDATA(enable_touch_wakeup) == 1) {
-		if (device_may_wakeup(&ts->client->dev)
-				&& ts->fb_suspended == true) {
-			pr_info_if(4, "Received gesture: (0x%04X)\n", buf[3]);
-			if (header->report_id == MAX1187X_REPORT_POWER_MODE
-					&& buf[3] == 0x0102) {
-				pr_info_if(4, "Received touch wakeup report\n");
-				input_report_key(ts->input_dev,	KEY_POWER, 1);
-				input_sync(ts->input_dev);
-				input_report_key(ts->input_dev,	KEY_POWER, 0);
-				input_sync(ts->input_dev);
-			}
-			goto err_process_touch_report_header;
-		}
-	}
-
 	if (header->report_id != MAX1187X_TOUCH_REPORT_BASIC &&
 			header->report_id != MAX1187X_TOUCH_REPORT_EXTENDED) {
 		if (header->report_id == 0x0134)
@@ -2702,13 +2686,6 @@ static struct max1187x_pdata *max1187x_get_platdata_dt(struct device *dev)
 		goto err_max1187x_get_platdata_dt;
 	}
 
-	/* Parse enable_touch_wakeup */
-	if (of_property_read_u32(devnode, "enable_touch_wakeup",
-		&pdata->enable_touch_wakeup)) {
-		pr_err("Failed to get property: enable_touch_wakeup\n");
-		goto err_max1187x_get_platdata_dt;
-	}
-
 	return pdata;
 
 err_max1187x_get_platdata_dt:
@@ -2933,9 +2910,6 @@ static int device_init(struct i2c_client *client)
 	if (PDATA(button_code3) != KEY_RESERVED)
 		set_bit(pdata->button_code3, ts->input_dev->keybit);
 
-	if (PDATA(enable_touch_wakeup) == 1)
-		set_bit(KEY_POWER, ts->input_dev->keybit);
-
 	atomic_set(&ts->keypad_enable, 1);
 
 	if (input_register_device(ts->input_dev)) {
@@ -3009,12 +2983,6 @@ static int device_init(struct i2c_client *client)
 	}
 	ts->sysfs_created++;
 
-	if (PDATA(enable_touch_wakeup) == 1) {
-		pr_info("Touch Wakeup Feature setup complete\n");
-		device_init_wakeup(&client->dev, 1);
-		device_wakeup_disable(&client->dev);
-	}
-
 	pr_info("(INIT): Done\n");
 	return 0;
 
@@ -3041,10 +3009,6 @@ static int device_deinit(struct i2c_client *client)
 	propagate_report(ts, -1, NULL);
 
 	init_state = 0;
-
-	if (PDATA(enable_touch_wakeup) == 1)
-		device_init_wakeup(&client->dev, 0);
-
 	sysfs_remove_file(android_touch_kobj, &dev_attr_debug_level.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_vendor.attr);
 	sysfs_remove_file(android_touch_kobj, &dev_attr_config.attr);
@@ -3343,17 +3307,7 @@ static void max1187x_ts_fb_suspend(struct data *ts)
 
 	pr_info("max1187x_%s", __func__);
 	DISABLE_IRQ();
-
-	if (PDATA(enable_touch_wakeup) == 1)
-		if (device_may_wakeup(&ts->client->dev))
-			data[2] = 0x6;
-
 	(void)send_mtp_command(ts, data, NWORDS(data));
-
-	if (PDATA(enable_touch_wakeup) == 1)
-		if (device_may_wakeup(&ts->client->dev))
-			enable_irq(ts->client->irq);
-
 	ENABLE_IRQ();
     ts->fb_suspended = true;
 }
@@ -3365,11 +3319,7 @@ static void max1187x_ts_fb_resume(struct data *ts)
     return;
 
 	pr_info("max1187x_%s", __func__);
-
-	if (PDATA(enable_touch_wakeup) == 1)
-		if (device_may_wakeup(&ts->client->dev))
-			disable_irq(ts->client->irq);
-
+	
 	(void)send_mtp_command(ts, data, NWORDS(data));
 
 	(void)change_touch_rpt(ts->client, PDATA(report_mode));
