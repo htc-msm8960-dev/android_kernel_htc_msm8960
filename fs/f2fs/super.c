@@ -877,6 +877,7 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 		seq_puts(seq, "adaptive");
 	else if (test_opt(sbi, LFS))
 		seq_puts(seq, "lfs");
+	seq_printf(seq, ",active_logs=%u", sbi->active_logs);
 
 	return 0;
 }
@@ -981,6 +982,8 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 	bool need_restart_gc = false;
 	bool need_stop_gc = false;
 	bool no_extent_cache = !test_opt(sbi, EXTENT_CACHE);
+
+	sync_filesystem(sb);
 
 	/*
 	 * Save the old mount options in case we
