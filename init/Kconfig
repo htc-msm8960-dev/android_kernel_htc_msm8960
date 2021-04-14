@@ -888,6 +888,9 @@ config SCHED_AUTOGROUP
 	  desktop applications.  Task group autogeneration is currently based
 	  upon task session.
 
+config ANDROID_DONT_KILL_MAGISK
+	bool "Workaround: prevent Magisk from killing"
+
 config MM_OWNER
 	bool
 
