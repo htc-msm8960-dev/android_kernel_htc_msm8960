@@ -147,4 +147,3 @@ obj-$(CONFIG_ESOC)		+= esoc/
 #sensor_class
 obj-$(CONFIG_SENSORS)		+= sensors/
 
-obj-$(CONFIG_ANDROID)		+= android/
