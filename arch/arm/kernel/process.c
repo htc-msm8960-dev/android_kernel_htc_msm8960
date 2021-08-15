@@ -227,9 +227,12 @@ EXPORT_SYMBOL_GPL(cpu_idle_wait);
 /*
  * This is our default idle handler.
  */
-
+#ifdef CONFIG_ARCH_MSM
 extern void arch_idle(void);
 void (*arm_pm_idle)(void) = arch_idle;
+#else
+void (*arm_pm_idle)(void);
+#endif
 
 static void default_idle(void)
 {

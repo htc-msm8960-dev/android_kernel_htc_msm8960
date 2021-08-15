@@ -232,8 +232,9 @@ static int gic_suspend(void)
 		gic_suspend_one(&gic_data[i]);
 	return 0;
 }
-
+#ifdef CONFIG_ARCH_MSM
 extern int msm_show_resume_irq_mask;
+#endif
 
 static void gic_show_resume_irq(struct gic_chip_data *gic)
 {
@@ -241,10 +242,10 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	u32 enabled;
 	unsigned long pending[32];
 	void __iomem *base = gic_data_dist_base(gic);
-
+#ifdef CONFIG_ARCH_MSM
 	if (!msm_show_resume_irq_mask)
 		return;
-
+#endif
 	raw_spin_lock(&irq_controller_lock);
 	for (i = 0; i * 32 < gic->max_irq; i++) {
 		enabled = readl_relaxed(base + GIC_DIST_ENABLE_CLEAR + i * 4);
