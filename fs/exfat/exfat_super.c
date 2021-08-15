@@ -263,7 +263,7 @@ static void exfat_write_super(struct super_block *sb);
 
 #define GLOBAL_ROOT_UID (0)
 #define GLOBAL_ROOT_GID (0)
-
+#ifndef KUIDT_INIT
 static inline bool uid_eq(uid_t left, uid_t right)
 {
 	return left == right;
@@ -293,7 +293,7 @@ static inline gid_t make_kgid(struct user_namespace *from, gid_t gid)
 {
 	return gid;
 }
-
+#endif
 #endif
 
 static void __lock_super(struct super_block *sb)
