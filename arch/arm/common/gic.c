@@ -46,8 +46,9 @@
 #include <asm/mach/irq.h>
 #include <asm/hardware/gic.h>
 #include <asm/system.h>
-
+#ifdef CONFIG_ARCH_MSM
 #include <mach/socinfo.h>
+#endif
 
 union gic_base {
 	void __iomem *common_base;
@@ -873,10 +874,12 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 	BUG_ON(gic_nr >= MAX_GIC_NR);
 
 	gic = &gic_data[gic_nr];
+#ifdef CONFIG_ARCH_MSM
 	if (cpu_is_msm8625() &&
 			(SOCINFO_VERSION_MAJOR(socinfo_get_version()) <= 1))
+#endif
 		gic->need_access_lock = true;
-
+ 
 #ifdef CONFIG_GIC_NON_BANKED
 	if (percpu_offset) { /* Frankein-GIC without banked registers... */
 		unsigned int cpu;

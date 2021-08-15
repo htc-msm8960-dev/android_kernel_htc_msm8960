@@ -22,9 +22,12 @@ source "drivers/gpu/vga/Kconfig"
 source "drivers/gpu/drm/Kconfig"
 
 source "drivers/gpu/stub/Kconfig"
-
-source "drivers/gpu/ion/Kconfig"
-
+if !ARCH_MSM
+source "drivers/gpu/ion-goldfish/Kconfig"
+endif
+if ARCH_MSM
+source "drivers/gpu/ion-msm/Kconfig"
+endif
 if !ARCH_APQ8064
 source "drivers/gpu/msm/Kconfig"
 endif

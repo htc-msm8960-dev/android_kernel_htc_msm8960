@@ -19,9 +19,9 @@
 #include <asm/smp_plat.h>
 #include <asm/thread_notify.h>
 #include <asm/tlbflush.h>
-
+#ifdef CONFIG_ARCH_MSMS
 #include <mach/msm_rtb.h>
-
+#endif
 /*
  * On ARMv6, we have the following structure in the Context ID:
  *
@@ -63,7 +63,7 @@ DEFINE_PER_CPU(struct mm_struct *, current_mm);
 #define cpu_set_asid(asid) \
 	asm("	mcr	p15, 0, %0, c13, c0, 1\n" : : "r" (asid))
 #endif
-
+#ifdef CONFIG_ARCH_MSM
 static void write_contextidr(u32 contextidr)
 {
 	uncached_logk(LOGK_CTXID, (void *)contextidr);
@@ -77,18 +77,20 @@ static u32 read_contextidr(void)
 	asm("mrc	p15, 0, %0, c13, c0, 1" : "=r" (contextidr));
 	return contextidr;
 }
-
+#endif
 static int contextidr_notifier(struct notifier_block *unused, unsigned long cmd,
 			       void *t)
 {
+#ifdef CONFIG_ARCH_MSM
 	unsigned long flags;
+#endif
 	u32 contextidr;
 	pid_t pid;
 	struct thread_info *thread = t;
 
 	if (cmd != THREAD_NOTIFY_SWITCH)
 		return NOTIFY_DONE;
-
+#ifdef CONFIG_ARCH_MSM
 	pid = task_pid_nr(thread->task);
 	local_irq_save(flags);
 	contextidr = read_contextidr();
@@ -96,6 +98,17 @@ static int contextidr_notifier(struct notifier_block *unused, unsigned long cmd,
 	contextidr |= pid << ASID_BITS;
 	write_contextidr(contextidr);
 	local_irq_restore(flags);
+#else 
+	pid = task_pid_nr(thread->task) << ASID_BITS;
+	asm volatile(
+	"	mrc	p15, 0, %0, c13, c0, 1\n"
+	"	and	%0, %0, %2\n"
+	"	orr	%0, %0, %1\n"
+	"	mcr	p15, 0, %0, c13, c0, 1\n"
+	: "=r" (contextidr), "+r" (pid)
+	: "I" (~ASID_MASK));
+	isb();
+#endif
 
 	return NOTIFY_OK;
 }

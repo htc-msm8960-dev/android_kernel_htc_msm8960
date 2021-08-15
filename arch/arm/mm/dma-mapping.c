@@ -774,13 +774,7 @@ static void dma_cache_maint_page(struct page *page, unsigned long offset,
 	} while (left);
 }
 
-/*
- * Make an area consistent for devices.
- * Note: Drivers should NOT use this function directly, as it will break
- * platforms with CONFIG_DMABOUNCE.
- * Use the driver DMA support - see dma-mapping.h (dma_sync_*)
- */
-static void __dma_page_cpu_to_dev(struct page *page, unsigned long off,
+void ___dma_page_cpu_to_dev(struct page *page, unsigned long off,
 	size_t size, enum dma_data_direction dir)
 {
 	unsigned long paddr;
@@ -795,6 +789,7 @@ static void __dma_page_cpu_to_dev(struct page *page, unsigned long off,
 	}
 	/* FIXME: non-speculating: flush on bidirectional mappings? */
 }
+EXPORT_SYMBOL(___dma_page_cpu_to_dev);
 
 static void __dma_page_dev_to_cpu(struct page *page, unsigned long off,
 	size_t size, enum dma_data_direction dir)

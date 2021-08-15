@@ -43,8 +43,9 @@
 #include <linux/rculist.h>
 
 #include <asm/uaccess.h>
-
+#ifdef CONFIG_ARCH_MSM
 #include <mach/msm_rtb.h>
+#endif
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
 
