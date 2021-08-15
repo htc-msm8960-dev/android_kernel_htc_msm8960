@@ -2020,13 +2020,24 @@ int pmem_cache_maint(struct file *file, unsigned int cmd,
 		"(vaddr %lx paddr %lx len %lu bytes)\n",
 		get_name(file), id, vaddr, paddr, length);
 	if (cmd == PMEM_CLEAN_INV_CACHES)
+#ifdef CONFIG_ARCH_MSM
 		clean_and_invalidate_caches(vaddr,
 				length, paddr);
+#else
+asm volatile("mcr     p15, 0, r10, c7, c5, 0" );
+#endif
 	else if (cmd == PMEM_CLEAN_CACHES)
+#ifdef CONFIG_ARCH_MSM
 		clean_caches(vaddr, length, paddr);
+#else
+isb(); 
+#endif
 	else if (cmd == PMEM_INV_CACHES)
+#ifdef CONFIG_ARCH_MSM
 		invalidate_caches(vaddr, length, paddr);
-
+#else
+isb();
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(pmem_cache_maint);
