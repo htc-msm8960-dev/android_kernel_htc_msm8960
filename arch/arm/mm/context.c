@@ -19,7 +19,7 @@
 #include <asm/smp_plat.h>
 #include <asm/thread_notify.h>
 #include <asm/tlbflush.h>
-#ifdef CONFIG_ARCH_MSMS
+#ifdef CONFIG_ARCH_MSM
 #include <mach/msm_rtb.h>
 #endif
 /*
@@ -70,6 +70,7 @@ static void write_contextidr(u32 contextidr)
 	asm("mcr	p15, 0, %0, c13, c0, 1" : : "r" (contextidr));
 	isb();
 }
+#endif
 
 static u32 read_contextidr(void)
 {
@@ -77,7 +78,7 @@ static u32 read_contextidr(void)
 	asm("mrc	p15, 0, %0, c13, c0, 1" : "=r" (contextidr));
 	return contextidr;
 }
-#endif
+
 static int contextidr_notifier(struct notifier_block *unused, unsigned long cmd,
 			       void *t)
 {
