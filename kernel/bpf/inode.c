@@ -195,15 +195,6 @@ static const struct inode_operations bpf_dir_iops = {
 	.unlink		= simple_unlink,
 };
 
-
-static void done_path_create(struct path *path, struct dentry *dentry)
-{
-	dput(dentry);
-	mutex_unlock(&path->dentry->d_inode->i_mutex);
-	mnt_drop_write(path->mnt);
-	path_put(path);
-}
-
 static int bpf_obj_do_pin(const char __user *pathname, void *raw,
 			  enum bpf_type type)
 {
