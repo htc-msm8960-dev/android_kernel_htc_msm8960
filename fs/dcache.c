@@ -1017,7 +1017,8 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 				       dentry->d_count,
 				       dentry->d_sb->s_type->name,
 				       dentry->d_sb->s_id);
-				BUG();
+
+				dentry->d_count--;
 			}
 
 			if (IS_ROOT(dentry)) {
