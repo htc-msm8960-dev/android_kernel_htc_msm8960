@@ -426,10 +426,10 @@ otherwise noted.
 	need not be implemented.  If some flags are supported then the
 	filesystem must return -EINVAL for any unsupported or unknown
 	flags.  Currently the following flags are implemented:
-	(1) RENAME_NOREPLACE: this flag indicates that if the target
+	(1) RENAME_NOREPLACE1: this flag indicates that if the target
 	of the rename exists the rename should fail with -EEXIST
 	instead of replacing the target.  The VFS already checks for
-	existence, so for local filesystems the RENAME_NOREPLACE
+	existence, so for local filesystems the RENAME_NOREPLACE1
 	implementation is equivalent to plain rename.
 	(2) RENAME_EXCHANGE: exchange source and target.  Both must
 	exist; this is checked by the VFS.  Unlike plain rename,
