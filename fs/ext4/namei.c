@@ -2121,7 +2121,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
 	struct ext4_iloc iloc;
 	int err = 0;
 
-	if (!EXT4_SB(inode->i_sb)->s_journal &&
+	if ((!EXT4_SB(inode->i_sb)->s_journal) &&
 	    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS))
 		return 0;
 
@@ -2656,7 +2656,7 @@ static int ext4_rename2(struct inode *old_dir, struct dentry *old_dentry,
 			struct inode *new_dir, struct dentry *new_dentry,
 			unsigned int flags)
 {
-	if (flags & ~RENAME_NOREPLACE)
+	if (flags & ~RENAME_NOREPLACE1)
 		return -EINVAL;
 
 	return ext4_rename(old_dir, old_dentry, new_dir, new_dentry);

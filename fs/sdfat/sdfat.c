@@ -208,10 +208,10 @@ static int sdfat_rename(struct inode *old_dir, struct dentry *old_dentry,
 {
 	/*
 	 * The VFS already checks for existence, so for local filesystems
-	 * the RENAME_NOREPLACE implementation is equivalent to plain rename.
+	 * the RENAME_NOREPLACE1 implementation is equivalent to plain rename.
 	 * Don't support any other flags
 	 */
-	if (flags & ~RENAME_NOREPLACE)
+	if (flags & ~RENAME_NOREPLACE1)
 		return -EINVAL;
 	return __sdfat_rename(old_dir, old_dentry, new_dir, new_dentry);
 }
