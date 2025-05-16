@@ -3980,7 +3980,7 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
 	struct filename *to;
 	int error;
 
-        if (flags & ~RENAME_NOREPLACE)
+        if (flags & ~RENAME_NOREPLACE1)
                 return -EINVAL;
 
 	from = user_path_parent(olddfd, oldname, &oldnd);
@@ -4005,7 +4005,7 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
 		goto exit2;
 
 	new_dir = newnd.path.dentry;
-	if (flags & RENAME_NOREPLACE)
+	if (flags & RENAME_NOREPLACE1)
 		error = -EEXIST;
 	if (newnd.last_type != LAST_NORM)
 		goto exit2;
@@ -4033,7 +4033,7 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
 	if (IS_ERR(new_dentry))
 		goto exit4;
 	error = -EEXIST;
-	if ((flags & RENAME_NOREPLACE) && !d_is_negative(new_dentry))
+	if ((flags & RENAME_NOREPLACE1) && !d_is_negative(new_dentry))
 		goto exit5;
 	/* unless the source is a directory trailing slashes give -ENOTDIR */
 	if (!S_ISDIR(old_dentry->d_inode->i_mode)) {
